@@ -3,8 +3,6 @@ version: "3.9"
 services:
   web:
     build:
-      # Coolify runs compose with --project-directory set to the repo root.
-      # Using "." keeps the build context anchored to the checked-out repo.
       context: .
       dockerfile: docker/Dockerfile
     expose:

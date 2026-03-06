@@ -57,7 +57,9 @@ Business upgrade flow:
 
 ## Docker / Coolify
 
-- The compose file does not publish fixed host ports.
+- For local Docker usage, run `docker compose up` from the repo root. The root [`compose.yml`](/Users/caleb/repos/hiresalem/compose.yml) keeps build paths correct for standard Compose.
+- For Coolify, point the service at [`docker/docker-compose.yml`](/Users/caleb/repos/hiresalem/docker/docker-compose.yml). That file is written for Coolify's `--project-directory` behavior.
+- The compose files do not publish fixed host ports.
 - The web container exposes `3000` internally.
 - The Postgres container exposes `5432` internally for other services on the Docker network.
 - In Coolify, let the platform publish the web service and assign the external port or domain.
