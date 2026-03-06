@@ -9,7 +9,7 @@ import { buildPageMetadata } from "@/lib/seo"
 import { buildCompanyJobsPath } from "@/lib/site-paths"
 import { buildCollectionPageJsonLd } from "@/lib/structured-data"
 
-export const revalidate = 900
+export const dynamic = "force-dynamic"
 
 export const metadata = buildPageMetadata({
   title: "Salem Oregon Jobs",

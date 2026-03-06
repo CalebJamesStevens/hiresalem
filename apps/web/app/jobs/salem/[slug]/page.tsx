@@ -11,7 +11,7 @@ type SalemTopicPageProps = {
   }>
 }
 
-export const revalidate = 900
+export const dynamic = "force-dynamic"
 
 export function generateStaticParams() {
   return salemCategoryPages.map((page) => ({

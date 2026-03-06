@@ -7,7 +7,7 @@ import { getJobsLandingPageBySlug } from "@/lib/seo-taxonomy"
 
 const pageContent = getJobsLandingPageBySlug("keizer")
 
-export const revalidate = 900
+export const dynamic = "force-dynamic"
 
 export const metadata = pageContent
   ? buildPageMetadata({
