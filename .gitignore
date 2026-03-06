@@ -1,0 +1,11 @@
+node_modules
+.bun
+.next
+out
+dist
+coverage
+*.log
+.env.local
+.env.*.local
+.env
+apps/web/public/uploads

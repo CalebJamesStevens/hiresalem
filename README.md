@@ -1,0 +1,63 @@
+# HireSalem MVP
+
+Monorepo for a Salem-local job board using Next.js (App Router), Bun workspaces, Postgres, Drizzle ORM, Tailwind, and Auth.js with Keycloak.
+
+## Auth and Role Model
+
+This app expects an existing cloud Keycloak realm (no local Keycloak service in this repo).
+Keycloak stays behind the scenes: users only interact with app-hosted `/signin` and `/signup` pages.
+
+Required roles:
+
+- `admin`: full moderation access (`/admin/*`, all jobs/applications)
+- `business`: create/manage own jobs (`/post-job`, `/dashboard/jobs`)
+- `user`: apply to onsite jobs and view own applications (`/dashboard/applications`)
+
+Default role recommendation in Keycloak:
+
+- new signups -> `user`
+- app flow can upgrade signed-in users to `business`
+- assign `admin` manually via Keycloak admin
+
+## Environment
+
+Copy `.env.example` to `.env` and set real values:
+
+- `DATABASE_URL`
+- `AUTH_SECRET`
+- `AUTH_KEYCLOAK_ISSUER`
+- `AUTH_KEYCLOAK_ID`
+- `AUTH_KEYCLOAK_SECRET`
+- `AUTH_KEYCLOAK_ADMIN_ID` (optional, recommended for signup/admin actions)
+- `AUTH_KEYCLOAK_ADMIN_SECRET` (optional, recommended for signup/admin actions)
+- `AUTH_KEYCLOAK_DEFAULT_ROLE` (defaults to `user`)
+
+Keycloak requirements for signup:
+
+- `AUTH_KEYCLOAK_ISSUER` must point at a real realm, for example `https://sso.example.com/realms/hiresalem`.
+- Prefer a dedicated confidential admin client via `AUTH_KEYCLOAK_ADMIN_ID` / `AUTH_KEYCLOAK_ADMIN_SECRET`.
+- If the admin variables are omitted, signup falls back to `AUTH_KEYCLOAK_ID` / `AUTH_KEYCLOAK_SECRET`.
+- The admin client must have service accounts enabled.
+- That client's service account needs realm-management permissions to create users and map roles.
+
+Business upgrade flow:
+
+- signed-in `user` accounts can visit `/become-business`
+- the app creates a company profile, grants the Keycloak `business` role, and refreshes the app session
+- business-posted jobs are automatically linked to the account's company profile
+
+## Commands
+
+- `bun install`
+- `bun run dev`
+- `bun run build`
+- `bun run db:generate`
+- `bun run db:migrate`
+- `bun run db:seed`
+
+## Docker / Coolify
+
+- The compose file does not publish fixed host ports.
+- The web container exposes `3000` internally.
+- The Postgres container exposes `5432` internally for other services on the Docker network.
+- In Coolify, let the platform publish the web service and assign the external port or domain.
