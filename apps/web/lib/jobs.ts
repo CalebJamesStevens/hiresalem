@@ -10,6 +10,17 @@ export type Job = typeof jobs.$inferSelect
 export type PublicJobSearchResult = Job & {
   companyName: string | null
   companySlug: string | null
+  companyWebsite: string | null
+}
+
+export type PublicJobDetail = PublicJobSearchResult
+
+export type TopEmployer = {
+  id: string
+  slug: string
+  name: string
+  website: string | null
+  activeJobCount: number
 }
 
 export type PublicJobSearchResponse = {
@@ -37,9 +48,7 @@ function getSalaryKnownOrder() {
   return sql<number>`case when ${jobs.salaryMin} is null and ${jobs.salaryMax} is null then 1 else 0 end`
 }
 
-export async function searchPublicJobs(input: JobsSearchParams): Promise<PublicJobSearchResponse> {
-  const params = input
-
+function buildPublicJobFilters(params: JobsSearchParams) {
   const filters: SQL[] = [eq(jobs.isActive, true)]
   const searchVector = getSearchVector()
   const searchTerm = params.q ? `%${params.q}%` : null
@@ -88,6 +97,46 @@ export async function searchPublicJobs(input: JobsSearchParams): Promise<PublicJ
     filters.push(sql`coalesce(${jobs.salaryMax}, ${jobs.salaryMin}) >= ${params.minSalary}`)
   }
 
+  return {
+    filters,
+    searchVector,
+    searchTerm,
+    tsQuery
+  }
+}
+
+function getPublicJobSelectShape(relevance: SQL<number>) {
+  return {
+    id: jobs.id,
+    slug: jobs.slug,
+    title: jobs.title,
+    ownerAuthId: jobs.ownerAuthId,
+    companyId: jobs.companyId,
+    location: jobs.location,
+    salary: jobs.salary,
+    workMode: jobs.workMode,
+    employmentType: jobs.employmentType,
+    category: jobs.category,
+    salaryMin: jobs.salaryMin,
+    salaryMax: jobs.salaryMax,
+    salaryCurrency: jobs.salaryCurrency,
+    salaryInterval: jobs.salaryInterval,
+    description: jobs.description,
+    applyType: jobs.applyType,
+    applyUrl: jobs.applyUrl,
+    isActive: jobs.isActive,
+    createdAt: jobs.createdAt,
+    companyName: companies.name,
+    companySlug: companies.slug,
+    companyWebsite: companies.website,
+    relevance
+  }
+}
+
+export async function searchPublicJobs(input: JobsSearchParams): Promise<PublicJobSearchResponse> {
+  const params = input
+  const { filters, searchVector, searchTerm, tsQuery } = buildPublicJobFilters(params)
+
   const relevance =
     params.q && searchTerm && tsQuery
       ? sql<number>`
@@ -122,28 +171,7 @@ export async function searchPublicJobs(input: JobsSearchParams): Promise<PublicJ
       .where(where),
     db
       .select({
-        id: jobs.id,
-        slug: jobs.slug,
-        title: jobs.title,
-        ownerAuthId: jobs.ownerAuthId,
-        companyId: jobs.companyId,
-        location: jobs.location,
-        salary: jobs.salary,
-        workMode: jobs.workMode,
-        employmentType: jobs.employmentType,
-        category: jobs.category,
-        salaryMin: jobs.salaryMin,
-        salaryMax: jobs.salaryMax,
-        salaryCurrency: jobs.salaryCurrency,
-        salaryInterval: jobs.salaryInterval,
-        description: jobs.description,
-        applyType: jobs.applyType,
-        applyUrl: jobs.applyUrl,
-        isActive: jobs.isActive,
-        createdAt: jobs.createdAt,
-        companyName: companies.name,
-        companySlug: companies.slug,
-        relevance
+        ...getPublicJobSelectShape(relevance)
       })
       .from(jobs)
       .leftJoin(companies, eq(jobs.companyId, companies.id))
@@ -167,6 +195,50 @@ export async function listPublicJobs() {
   return data.results
 }
 
+export async function listLatestPublicJobs(limit = 6) {
+  const relevance = sql<number>`0`
+
+  const results = await db
+    .select({
+      ...getPublicJobSelectShape(relevance)
+    })
+    .from(jobs)
+    .leftJoin(companies, eq(jobs.companyId, companies.id))
+    .where(eq(jobs.isActive, true))
+    .orderBy(desc(jobs.createdAt))
+    .limit(limit)
+
+  return results.map(({ relevance: _relevance, ...job }) => job)
+}
+
+export async function listTopEmployers(limit = 5): Promise<TopEmployer[]> {
+  return db
+    .select({
+      id: companies.id,
+      slug: companies.slug,
+      name: companies.name,
+      website: companies.website,
+      activeJobCount: sql<number>`count(${jobs.id})::int`
+    })
+    .from(companies)
+    .innerJoin(jobs, eq(companies.id, jobs.companyId))
+    .where(eq(jobs.isActive, true))
+    .groupBy(companies.id)
+    .orderBy(desc(sql<number>`count(${jobs.id})::int`), asc(companies.name))
+    .limit(limit)
+}
+
+export async function listPublicJobsForSitemap() {
+  return db
+    .select({
+      slug: jobs.slug,
+      createdAt: jobs.createdAt
+    })
+    .from(jobs)
+    .where(eq(jobs.isActive, true))
+    .orderBy(desc(jobs.createdAt))
+}
+
 export async function listJobsForOwner(ownerAuthId: string) {
   return db
     .select()
@@ -185,7 +257,36 @@ export async function getJobById(id: string) {
 }
 
 export async function getJobBySlug(slug: string) {
-  const [job] = await db.select().from(jobs).where(eq(jobs.slug, slug)).limit(1)
+  const [job] = await db
+    .select({
+      id: jobs.id,
+      slug: jobs.slug,
+      title: jobs.title,
+      ownerAuthId: jobs.ownerAuthId,
+      companyId: jobs.companyId,
+      location: jobs.location,
+      salary: jobs.salary,
+      workMode: jobs.workMode,
+      employmentType: jobs.employmentType,
+      category: jobs.category,
+      salaryMin: jobs.salaryMin,
+      salaryMax: jobs.salaryMax,
+      salaryCurrency: jobs.salaryCurrency,
+      salaryInterval: jobs.salaryInterval,
+      description: jobs.description,
+      applyType: jobs.applyType,
+      applyUrl: jobs.applyUrl,
+      isActive: jobs.isActive,
+      createdAt: jobs.createdAt,
+      companyName: companies.name,
+      companySlug: companies.slug,
+      companyWebsite: companies.website
+    })
+    .from(jobs)
+    .leftJoin(companies, eq(jobs.companyId, companies.id))
+    .where(eq(jobs.slug, slug))
+    .limit(1)
+
   return job ?? null
 }
 
@@ -197,4 +298,76 @@ export async function getPublicActiveJobBySlug(slug: string) {
     .limit(1)
 
   return job ?? null
+}
+
+export async function listActiveJobsForCompany(companyId: string) {
+  return db
+    .select()
+    .from(jobs)
+    .where(and(eq(jobs.companyId, companyId), eq(jobs.isActive, true)))
+    .orderBy(desc(jobs.createdAt))
+}
+
+export async function listMatchingPublicJobsForAlert(params: JobsSearchParams, since: Date | null, limit = 10) {
+  const { filters } = buildPublicJobFilters(params)
+
+  if (since) {
+    filters.push(sql`${jobs.createdAt} > ${since}`)
+  }
+
+  const relevance = sql<number>`0`
+
+  const results = await db
+    .select({
+      ...getPublicJobSelectShape(relevance)
+    })
+    .from(jobs)
+    .leftJoin(companies, eq(jobs.companyId, companies.id))
+    .where(and(...filters))
+    .orderBy(desc(jobs.createdAt))
+    .limit(limit)
+
+  return results.map(({ relevance: _relevance, ...job }) => job)
+}
+
+export async function listRelatedJobsForJob(job: PublicJobDetail, limit = 4) {
+  const sameLocation = job.location ? ilike(jobs.location, `%${job.location}%`) : null
+  const sameCategory = job.category ? eq(jobs.category, job.category) : null
+  const sameWorkMode = job.workMode ? eq(jobs.workMode, job.workMode) : null
+  const sameEmploymentType = job.employmentType ? eq(jobs.employmentType, job.employmentType) : null
+
+  const relationScore = sql<number>`
+    (case when ${job.companyId ? sql`${jobs.companyId} = ${job.companyId}` : sql`false`} then 100 else 0 end) +
+    (case when ${sameLocation ?? sql`false`} and ${sameCategory ?? sql`false`} then 35 else 0 end) +
+    (case when ${sameLocation ?? sql`false`} and (${sameWorkMode ?? sql`false`} or ${sameEmploymentType ?? sql`false`}) then 20 else 0 end) +
+    (case when ${sameCategory ?? sql`false`} then 15 else 0 end) +
+    (case when ${sameWorkMode ?? sql`false`} then 10 else 0 end) +
+    (case when ${sameEmploymentType ?? sql`false`} then 10 else 0 end)
+  `
+
+  const results = await db
+    .select({
+      ...getPublicJobSelectShape(relationScore)
+    })
+    .from(jobs)
+    .leftJoin(companies, eq(jobs.companyId, companies.id))
+    .where(and(eq(jobs.isActive, true), sql`${jobs.id} <> ${job.id}`))
+    .orderBy(desc(relationScore), desc(jobs.createdAt))
+    .limit(limit)
+
+  return results
+    .filter((row) => row.relevance > 0)
+    .map(({ relevance: _relevance, ...relatedJob }) => relatedJob)
+}
+
+export async function listCompaniesWithActiveJobsForSitemap() {
+  return db
+    .selectDistinct({
+      slug: companies.slug,
+      createdAt: companies.createdAt
+    })
+    .from(companies)
+    .innerJoin(jobs, eq(companies.id, jobs.companyId))
+    .where(eq(jobs.isActive, true))
+    .orderBy(desc(companies.createdAt))
 }

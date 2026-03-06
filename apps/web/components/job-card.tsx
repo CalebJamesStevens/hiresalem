@@ -2,6 +2,7 @@ import Link from "next/link"
 
 import { categoryOptions, employmentTypeOptions, workModeOptions } from "@/lib/job-search"
 import type { PublicJobSearchResult } from "@/lib/jobs"
+import { buildCompanyJobsPath } from "@/lib/site-paths"
 
 function formatRelativeDate(date: Date) {
   const diffMs = Date.now() - new Date(date).getTime()
@@ -59,7 +60,7 @@ export function JobCard({ job }: { job: PublicJobSearchResult }) {
           <div className="space-y-1">
             <h2 className="text-xl font-semibold text-slate-900">{job.title}</h2>
             {job.companySlug && job.companyName ? (
-              <Link href={`/companies/${job.companySlug}`} className="text-sm font-medium text-slate-700 underline">
+              <Link href={buildCompanyJobsPath(job.companySlug)} className="text-sm font-medium text-slate-700 underline">
                 {job.companyName}
               </Link>
             ) : job.companyName ? (

@@ -3,6 +3,8 @@
 import Link from "next/link"
 import { useState, useTransition } from "react"
 
+import { trackAnalyticsEvent } from "@/lib/analytics"
+
 type ApplicationFormProps = {
   jobId: string
   jobTitle: string
@@ -45,6 +47,7 @@ export function ApplicationForm({
     startTransition(async () => {
       setStatus({ tone: "info", message: "Submitting your application..." })
       formData.set("jobId", jobId)
+      trackAnalyticsEvent("apply_click")
 
       const response = await fetch("/api/applications", {
         method: "POST",

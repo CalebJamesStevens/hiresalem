@@ -1,0 +1,50 @@
+import { JsonLd } from "@/components/json-ld"
+import { LinkCardGrid } from "@/components/link-card-grid"
+import { resourceArticles } from "@/lib/seo-taxonomy"
+import { buildPageMetadata } from "@/lib/seo"
+import { buildCollectionPageJsonLd } from "@/lib/structured-data"
+
+export const metadata = buildPageMetadata({
+  title: "Salem Job Search Resources",
+  description:
+    "Read Salem-specific job seeker guides covering resumes, healthcare hiring, where to search locally, and how to compare Salem with Keizer.",
+  path: "/resources",
+  keywords: ["Salem job search tips", "Salem resume tips", "Salem healthcare hiring", "Keizer job market"]
+})
+
+export default function ResourcesPage() {
+  const items = resourceArticles.map((article) => ({
+    href: article.path,
+    title: article.heroTitle,
+    description: article.seoDescription
+  }))
+
+  return (
+    <section className="space-y-8">
+      <JsonLd
+        data={buildCollectionPageJsonLd({
+          name: "Salem job search resources",
+          description: "Guides for Salem-area job seekers using HireSalem.",
+          path: "/resources",
+          items: items.map((item) => ({
+            name: item.title,
+            path: item.href
+          }))
+        })}
+      />
+
+      <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="space-y-3">
+          <p className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-500">Local hiring guides</p>
+          <h1 className="text-4xl font-bold tracking-tight text-slate-950">Salem job search resources</h1>
+          <p className="max-w-3xl text-base leading-7 text-slate-700">
+            These guides are written for Salem-area job seekers who want better local search habits, stronger applications, and a clearer view of
+            the Salem and Keizer market.
+          </p>
+        </div>
+      </section>
+
+      <LinkCardGrid title="Browse the guides" items={items} />
+    </section>
+  )
+}

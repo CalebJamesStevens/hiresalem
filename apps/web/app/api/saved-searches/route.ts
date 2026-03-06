@@ -5,7 +5,9 @@ import { createSavedSearch, listSavedSearchesForUser } from "@/lib/saved-searche
 
 const createSavedSearchSchema = z.object({
   name: z.string().min(1).max(80),
-  queryString: z.string().min(1)
+  queryString: z.string().min(1),
+  recipientEmail: z.string().email().optional().or(z.literal("")),
+  alertsEnabled: z.boolean().optional()
 })
 
 export async function GET() {
@@ -33,7 +35,9 @@ export async function POST(req: Request) {
     const created = await createSavedSearch({
       userAuthId: authResult.user.id,
       name: parsed.data.name,
-      queryString: parsed.data.queryString
+      queryString: parsed.data.queryString,
+      recipientEmail: parsed.data.recipientEmail || authResult.user.email,
+      alertsEnabled: parsed.data.alertsEnabled
     })
 
     return Response.json(created, { status: 201 })

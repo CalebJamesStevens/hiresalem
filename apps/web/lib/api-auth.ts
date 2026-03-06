@@ -3,6 +3,7 @@ import { getSessionSafe } from "@/lib/session"
 
 export type ApiAuthUser = {
   id: string
+  email: string | null
   roles: AppRole[]
 }
 
@@ -19,5 +20,11 @@ export async function requireApiRoles(requiredRoles: AppRole[]) {
     return { response: Response.json({ error: "Forbidden" }, { status: 403 }) }
   }
 
-  return { user: { id: userId, roles } satisfies ApiAuthUser }
+  return {
+    user: {
+      id: userId,
+      email: typeof session?.user?.email === "string" ? session.user.email : null,
+      roles
+    } satisfies ApiAuthUser
+  }
 }

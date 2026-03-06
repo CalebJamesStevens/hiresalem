@@ -4,6 +4,7 @@ import { redirect } from "next/navigation"
 
 export type SessionUser = {
   id: string
+  email: string | null
   roles: AppRole[]
 }
 
@@ -20,5 +21,9 @@ export async function requirePageRoles(requiredRoles: AppRole[], callbackPath: s
     redirect("/jobs")
   }
 
-  return { id: userId, roles }
+  return {
+    id: userId,
+    email: typeof session?.user?.email === "string" ? session.user.email : null,
+    roles
+  }
 }
