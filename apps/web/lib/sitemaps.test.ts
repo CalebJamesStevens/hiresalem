@@ -1,6 +1,12 @@
 import { describe, expect, test } from "bun:test"
 
-import { buildSitemapIndexXml, buildSitemapXml, getStaticSitemapEntries, getTaxonomySitemapEntries } from "@/lib/sitemaps"
+import {
+  buildSitemapIndexXml,
+  buildSitemapXml,
+  getJobSitemapLastModified,
+  getStaticSitemapEntries,
+  getTaxonomySitemapEntries
+} from "@/lib/sitemaps"
 
 describe("sitemap helpers", () => {
   test("keeps the taxonomy sitemap aligned to the /jobs IA", () => {
@@ -26,5 +32,34 @@ describe("sitemap helpers", () => {
 
     expect(sitemapXml).toContain("https://hiresalem.com/jobs/salem")
     expect(sitemapIndexXml).toContain("https://hiresalem.com/sitemap-jobs.xml")
+  })
+
+  test("prefers activatedAt for job sitemap freshness", () => {
+    const createdAt = new Date("2026-03-01T12:00:00.000Z")
+    const activatedAt = new Date("2026-03-03T12:00:00.000Z")
+
+    expect(
+      getJobSitemapLastModified({
+        createdAt,
+        activatedAt
+      })
+    ).toBe(activatedAt)
+    expect(
+      getJobSitemapLastModified({
+        createdAt,
+        activatedAt: null
+      })
+    ).toBe(createdAt)
+  })
+
+  test("emits sitemap index lastmod values and preserves XML escaping", () => {
+    const lastModified = new Date("2026-03-07T12:00:00.000Z")
+    const sitemapXml = buildSitemapXml([{ path: "/jobs/salem?tag=a&b=c", lastModified }])
+    const sitemapIndexXml = buildSitemapIndexXml([{ path: "/sitemap-jobs.xml?tag=a&b=c", lastModified }])
+
+    expect(sitemapXml).toContain("https://hiresalem.com/jobs/salem?tag=a&amp;b=c")
+    expect(sitemapXml).toContain(`<lastmod>${lastModified.toISOString()}</lastmod>`)
+    expect(sitemapIndexXml).toContain("https://hiresalem.com/sitemap-jobs.xml?tag=a&amp;b=c")
+    expect(sitemapIndexXml).toContain(`<lastmod>${lastModified.toISOString()}</lastmod>`)
   })
 })

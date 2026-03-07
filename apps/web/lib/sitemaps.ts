@@ -5,7 +5,7 @@ import { buildCompanyJobsPath } from "@/lib/site-paths"
 
 export type SitemapEntry = {
   path: string
-  lastModified?: Date
+  lastModified?: Date | string
 }
 
 const sitemapDocumentOptions = {
@@ -31,12 +31,28 @@ export function getTaxonomySitemapEntries(): SitemapEntry[] {
   }))
 }
 
+export function getJobSitemapLastModified(job: { activatedAt?: Date | null; createdAt: Date }) {
+  return toSitemapDate(job.activatedAt) ?? toSitemapDate(job.createdAt)
+}
+
+export function getCompanySitemapLastModified(company: {
+  latestActiveJobActivatedAt?: Date | string | null
+  latestActiveJobCreatedAt?: Date | string | null
+  createdAt: Date | string
+}) {
+  return (
+    toSitemapDate(company.latestActiveJobActivatedAt) ??
+    toSitemapDate(company.latestActiveJobCreatedAt) ??
+    toSitemapDate(company.createdAt)
+  )
+}
+
 export async function getJobsSitemapEntries(): Promise<SitemapEntry[]> {
   const jobs = await listPublicJobsForSitemap()
 
   return jobs.map((job) => ({
     path: `/jobs/${job.slug}`,
-    lastModified: job.createdAt
+    lastModified: getJobSitemapLastModified(job)
   }))
 }
 
@@ -47,7 +63,7 @@ export async function getPagesSitemapEntries(): Promise<SitemapEntry[]> {
     ...getStaticSitemapEntries(),
     ...companies.map((company) => ({
       path: buildCompanyJobsPath(company.slug),
-      lastModified: company.createdAt
+      lastModified: getCompanySitemapLastModified(company)
     }))
   ]
 }
@@ -72,10 +88,19 @@ function escapeXml(value: string) {
     .replaceAll("'", "&apos;")
 }
 
+function toSitemapDate(value?: Date | string | null) {
+  if (!value) {
+    return undefined
+  }
+
+  return value instanceof Date ? value : new Date(value)
+}
+
 export function buildSitemapXml(entries: SitemapEntry[]) {
   const body = entries
     .map((entry) => {
-      const lastModified = entry.lastModified ? `<lastmod>${entry.lastModified.toISOString()}</lastmod>` : ""
+      const lastModifiedDate = toSitemapDate(entry.lastModified)
+      const lastModified = lastModifiedDate ? `<lastmod>${lastModifiedDate.toISOString()}</lastmod>` : ""
       return `<url><loc>${escapeXml(absoluteUrl(entry.path))}</loc>${lastModified}</url>`
     })
     .join("")
@@ -83,9 +108,15 @@ export function buildSitemapXml(entries: SitemapEntry[]) {
   return `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${body}</urlset>`
 }
 
-export function buildSitemapIndexXml(paths: string[]) {
-  const body = paths
-    .map((path) => `<sitemap><loc>${escapeXml(absoluteUrl(path))}</loc></sitemap>`)
+export function buildSitemapIndexXml(entries: Array<string | SitemapEntry>) {
+  const normalizedEntries = entries.map((entry) => (typeof entry === "string" ? { path: entry } : entry))
+
+  const body = normalizedEntries
+    .map((entry) => {
+      const lastModifiedDate = toSitemapDate(entry.lastModified)
+      const lastModified = lastModifiedDate ? `<lastmod>${lastModifiedDate.toISOString()}</lastmod>` : ""
+      return `<sitemap><loc>${escapeXml(absoluteUrl(entry.path))}</loc>${lastModified}</sitemap>`
+    })
     .join("")
 
   return `<?xml version="1.0" encoding="UTF-8"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${body}</sitemapindex>`

@@ -264,11 +264,12 @@ export async function listPublicJobsForSitemap() {
   return db
     .select({
       slug: jobs.slug,
+      activatedAt: jobs.activatedAt,
       createdAt: jobs.createdAt
     })
     .from(jobs)
     .where(getPublishedJobsFilter())
-    .orderBy(desc(jobs.createdAt))
+    .orderBy(desc(jobs.activatedAt), desc(jobs.createdAt))
 }
 
 export async function listJobsForOwner(ownerAuthId: string) {
@@ -400,12 +401,15 @@ export async function listRelatedJobsForJob(job: PublicJobDetail, limit = 4) {
 
 export async function listCompaniesWithActiveJobsForSitemap() {
   return db
-    .selectDistinct({
+    .select({
       slug: companies.slug,
-      createdAt: companies.createdAt
+      createdAt: companies.createdAt,
+      latestActiveJobActivatedAt: sql<Date | null>`max(${jobs.activatedAt})`,
+      latestActiveJobCreatedAt: sql<Date | null>`max(${jobs.createdAt})`
     })
     .from(companies)
     .innerJoin(jobs, eq(companies.id, jobs.companyId))
     .where(getPublishedJobsFilter())
-    .orderBy(desc(companies.createdAt))
+    .groupBy(companies.id)
+    .orderBy(desc(sql<Date | null>`max(${jobs.activatedAt})`), desc(sql<Date | null>`max(${jobs.createdAt})`), desc(companies.createdAt))
 }

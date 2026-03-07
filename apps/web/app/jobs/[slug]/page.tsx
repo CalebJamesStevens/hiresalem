@@ -14,7 +14,7 @@ import { markdownToPlainText } from "@/lib/markdown"
 import { buildPageMetadata, snippet } from "@/lib/seo"
 import { buildCompanyJobsPath } from "@/lib/site-paths"
 import { getSessionSafe } from "@/lib/session"
-import { buildBreadcrumbJsonLd, buildJobPostingJsonLd } from "@/lib/structured-data"
+import { buildBreadcrumbJsonLd, buildJobPostingJsonLd, normalizeJobLocation } from "@/lib/structured-data"
 
 type JobPageProps = {
   params: Promise<{
@@ -85,6 +85,9 @@ export default async function JobPage({ params }: JobPageProps) {
   const signedInEmail = typeof session?.user?.email === "string" ? session.user.email : null
   const signInHref = `/signin?callbackUrl=${encodeURIComponent(`/jobs/${job.slug}`)}`
   const companyPath = job.companySlug ? buildCompanyJobsPath(job.companySlug) : null
+  const jobLocation = job.workMode === "remote" ? null : normalizeJobLocation(job.location)
+  const workModeLabel =
+    job.workMode === "remote" ? "Remote" : job.workMode === "hybrid" ? "Hybrid" : job.workMode === "onsite" ? "On-site" : null
   const breadcrumbs = [
     { name: "Home", href: "/" },
     { name: "Jobs", href: "/jobs" },
@@ -130,11 +133,15 @@ export default async function JobPage({ params }: JobPageProps) {
             title: job.title,
             description: markdownToPlainText(job.description) || `${job.title} at ${job.companyName ?? "a Salem-area employer"}`,
             path: `/jobs/${job.slug}`,
-            datePosted: job.createdAt,
+            datePosted: job.activatedAt ?? job.createdAt,
+            validThrough: job.expiresAt,
             employmentType: job.employmentType,
             hiringOrganizationName: job.companyName,
-            hiringOrganizationPath: companyPath,
-            jobLocation: job.location ?? "Salem",
+            hiringOrganizationWebsite: job.companyWebsite,
+            jobLocation,
+            applicantLocationCountry: "US",
+            isRemote: job.workMode === "remote",
+            directApply: job.applyType === "external",
             baseSalary:
               job.salaryMin || job.salaryMax
                 ? {
@@ -154,6 +161,7 @@ export default async function JobPage({ params }: JobPageProps) {
           <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
             <span className="rounded-full bg-slate-100 px-3 py-1">{job.applyType === "onsite" ? "Apply in app" : "External apply"}</span>
             <span className="rounded-full bg-slate-100 px-3 py-1">{statusLabel}</span>
+            {workModeLabel ? <span className="rounded-full bg-slate-100 px-3 py-1">{workModeLabel}</span> : null}
           </div>
           <div className="min-w-0 space-y-2">
             <h1 className="break-words text-3xl font-bold tracking-tight text-slate-950 md:text-4xl">{job.title}</h1>

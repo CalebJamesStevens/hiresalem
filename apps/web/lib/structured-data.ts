@@ -10,21 +10,111 @@ type CollectionItem = {
   path: string
 }
 
+type JobLocationInput = {
+  city: string
+  region: string
+  country: string
+}
+
 type JobPostingInput = {
   title: string
   description: string
   path: string
   datePosted: Date
+  validThrough?: Date | null
   employmentType?: string | null
   hiringOrganizationName?: string | null
-  hiringOrganizationPath?: string | null
-  jobLocation?: string | null
+  hiringOrganizationWebsite?: string | null
+  jobLocation?: JobLocationInput | null
+  applicantLocationCountry?: string | null
+  isRemote?: boolean
+  directApply?: boolean | null
   baseSalary?: {
     currency: string
     minValue?: number | null
     maxValue?: number | null
     unitText?: string | null
   } | null
+}
+
+const salaryUnitTextMap: Record<string, string> = {
+  hour: "HOUR",
+  week: "WEEK",
+  month: "MONTH",
+  year: "YEAR"
+}
+
+const supportedJobLocationCities = {
+  salem: "Salem",
+  keizer: "Keizer",
+  woodburn: "Woodburn",
+  dallas: "Dallas",
+  monmouth: "Monmouth",
+  independence: "Independence",
+  silverton: "Silverton"
+} as const
+
+function normalizeWhitespace(value: string) {
+  return value.trim().replace(/\s+/g, " ")
+}
+
+function findSupportedCity(value: string) {
+  const matches = Object.entries(supportedJobLocationCities)
+    .map(([slug, city]) => ({
+      city,
+      index: value.search(new RegExp(`\\b${slug}\\b`, "i"))
+    }))
+    .filter((match) => match.index >= 0)
+    .sort((left, right) => left.index - right.index)
+
+  return matches[0]?.city ?? null
+}
+
+export function normalizeJobLocation(location?: string | null): JobLocationInput | null {
+  if (!location) {
+    return null
+  }
+
+  const normalized = normalizeWhitespace(location)
+
+  if (!normalized) {
+    return null
+  }
+
+  const directCity = findSupportedCity(normalized)
+
+  if (normalized.includes("/")) {
+    if (!directCity) {
+      return null
+    }
+
+    return {
+      city: directCity,
+      region: "OR",
+      country: "US"
+    }
+  }
+
+  if (/\b(remote|work from home|wfh|telecommute)\b/i.test(normalized)) {
+    return null
+  }
+
+  if (!directCity) {
+    return null
+  }
+
+  const locationPrefix = normalized.split(",")[0] ?? normalized
+  const prefixCity = findSupportedCity(locationPrefix)
+
+  if (!prefixCity) {
+    return null
+  }
+
+  return {
+    city: prefixCity,
+    region: "OR",
+    country: "US"
+  }
 }
 
 export function buildOrganizationJsonLd() {
@@ -36,6 +126,16 @@ export function buildOrganizationJsonLd() {
     areaServed: ["Salem", "Keizer", "Woodburn", "Dallas", "Monmouth", "Independence", "Silverton"],
     knowsAbout: ["Jobs", "Hiring", "Salem jobs", "Local employers"],
     sameAs: [siteConfig.url]
+  }
+}
+
+export function buildCompanyOrganizationJsonLd(input: { name: string; path: string; website?: string | null }) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: input.name,
+    url: absoluteUrl(input.path),
+    sameAs: input.website ? [input.website] : undefined
   }
 }
 
@@ -110,6 +210,33 @@ export function buildFaqJsonLd(questions: Array<{ question: string; answer: stri
   }
 }
 
+export function buildArticleJsonLd(input: {
+  headline: string
+  description: string
+  path: string
+  datePublished?: Date | null
+  dateModified?: Date | null
+}) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: input.headline,
+    description: input.description,
+    url: absoluteUrl(input.path),
+    mainEntityOfPage: {
+      "@type": "WebPage",
+      "@id": absoluteUrl(input.path)
+    },
+    publisher: {
+      "@type": "Organization",
+      name: siteConfig.name,
+      url: siteConfig.url
+    },
+    datePublished: input.datePublished?.toISOString(),
+    dateModified: input.dateModified?.toISOString()
+  }
+}
+
 export function buildJobPostingJsonLd(input: JobPostingInput) {
   const employmentTypeMap: Record<string, string> = {
     full_time: "FULL_TIME",
@@ -119,31 +246,47 @@ export function buildJobPostingJsonLd(input: JobPostingInput) {
     temporary: "TEMPORARY"
   }
 
+  const normalizedSalaryUnitText = input.baseSalary?.unitText
+    ? salaryUnitTextMap[input.baseSalary.unitText] ?? input.baseSalary.unitText
+    : undefined
+
   return {
     "@context": "https://schema.org",
     "@type": "JobPosting",
     title: input.title,
     description: input.description,
     datePosted: input.datePosted.toISOString(),
+    validThrough: input.validThrough?.toISOString(),
     employmentType: input.employmentType ? employmentTypeMap[input.employmentType] ?? input.employmentType : undefined,
     hiringOrganization: input.hiringOrganizationName
       ? {
           "@type": "Organization",
           name: input.hiringOrganizationName,
-          sameAs: input.hiringOrganizationPath ? absoluteUrl(input.hiringOrganizationPath) : undefined
+          sameAs: input.hiringOrganizationWebsite ? [input.hiringOrganizationWebsite] : undefined
         }
       : undefined,
-    jobLocation: input.jobLocation
+    jobLocation:
+      input.isRemote === true
+        ? undefined
+        : input.jobLocation
       ? {
           "@type": "Place",
           address: {
             "@type": "PostalAddress",
-            addressLocality: input.jobLocation,
-            addressRegion: "OR",
-            addressCountry: "US"
+            addressLocality: input.jobLocation.city,
+            addressRegion: input.jobLocation.region,
+            addressCountry: input.jobLocation.country
           }
         }
       : undefined,
+    jobLocationType: input.isRemote === true ? "TELECOMMUTE" : undefined,
+    applicantLocationRequirements:
+      input.isRemote === true && input.applicantLocationCountry
+        ? {
+            "@type": "Country",
+            name: input.applicantLocationCountry
+          }
+        : undefined,
     baseSalary: input.baseSalary
       ? {
           "@type": "MonetaryAmount",
@@ -152,11 +295,11 @@ export function buildJobPostingJsonLd(input: JobPostingInput) {
             "@type": "QuantitativeValue",
             minValue: input.baseSalary.minValue ?? undefined,
             maxValue: input.baseSalary.maxValue ?? undefined,
-            unitText: input.baseSalary.unitText ?? undefined
+            unitText: normalizedSalaryUnitText
           }
         }
       : undefined,
     url: absoluteUrl(input.path),
-    directApply: true
+    ...(input.directApply === null || input.directApply === undefined ? {} : { directApply: input.directApply })
   }
 }

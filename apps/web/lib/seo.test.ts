@@ -3,7 +3,7 @@ import { describe, expect, test } from "bun:test"
 import { jobsLandingPages, resourceArticles } from "@/lib/seo-taxonomy"
 import { parseJobsSearchParams } from "@/lib/job-search"
 import { buildPageMetadata, getJobsPageCanonicalPath, getJobsPageRobots } from "@/lib/seo"
-import { buildJobPostingJsonLd } from "@/lib/structured-data"
+import { buildJobPostingJsonLd, normalizeJobLocation } from "@/lib/structured-data"
 
 describe("jobs index SEO rules", () => {
   test("keeps the clean jobs page indexable", () => {
@@ -48,11 +48,99 @@ describe("structured data helpers", () => {
       datePosted: new Date("2026-03-06T12:00:00.000Z"),
       employmentType: "full_time",
       hiringOrganizationName: "HireSalem Clinic",
-      jobLocation: "Salem"
+      jobLocation: {
+        city: "Salem",
+        region: "OR",
+        country: "US"
+      }
     })
 
     expect(jsonLd.employmentType).toBe("FULL_TIME")
     expect(jsonLd.url).toBe("https://hiresalem.com/jobs/front-desk-coordinator")
+  })
+
+  test("emits validThrough and uses external employer website for sameAs", () => {
+    const validThrough = new Date("2026-04-01T12:00:00.000Z")
+    const jsonLd = buildJobPostingJsonLd({
+      title: "Operations Manager",
+      description: "Lead daily operations.",
+      path: "/jobs/operations-manager",
+      datePosted: new Date("2026-03-06T12:00:00.000Z"),
+      validThrough,
+      hiringOrganizationName: "Acme Logistics",
+      hiringOrganizationWebsite: "https://acme.example"
+    })
+
+    expect(jsonLd.validThrough).toBe(validThrough.toISOString())
+    expect(jsonLd.hiringOrganization?.sameAs).toEqual(["https://acme.example"])
+  })
+
+  test("emits remote-specific job posting fields without a fake remote address", () => {
+    const jsonLd = buildJobPostingJsonLd({
+      title: "Remote Support Specialist",
+      description: "Help customers from anywhere in the US.",
+      path: "/jobs/remote-support-specialist",
+      datePosted: new Date("2026-03-06T12:00:00.000Z"),
+      hiringOrganizationName: "Acme Support",
+      isRemote: true,
+      applicantLocationCountry: "US"
+    })
+
+    expect(jsonLd.jobLocationType).toBe("TELECOMMUTE")
+    expect(jsonLd.applicantLocationRequirements).toEqual({
+      "@type": "Country",
+      name: "US"
+    })
+    expect(jsonLd.jobLocation).toBeUndefined()
+  })
+
+  test("normalizes salary interval values for job posting schema", () => {
+    const intervals = {
+      hour: "HOUR",
+      week: "WEEK",
+      month: "MONTH",
+      year: "YEAR"
+    } as const
+
+    for (const [unitText, expected] of Object.entries(intervals)) {
+      const jsonLd = buildJobPostingJsonLd({
+        title: "Warehouse Associate",
+        description: "Move inventory safely.",
+        path: "/jobs/warehouse-associate",
+        datePosted: new Date("2026-03-06T12:00:00.000Z"),
+        baseSalary: {
+          currency: "USD",
+          minValue: 20,
+          unitText
+        }
+      })
+
+      expect(jsonLd.baseSalary?.value.unitText).toBe(expected)
+    }
+  })
+
+  test("normalizes common Salem-area job locations conservatively", () => {
+    expect(normalizeJobLocation("Salem")).toEqual({
+      city: "Salem",
+      region: "OR",
+      country: "US"
+    })
+    expect(normalizeJobLocation("Salem, OR")).toEqual({
+      city: "Salem",
+      region: "OR",
+      country: "US"
+    })
+    expect(normalizeJobLocation("Salem, Oregon")).toEqual({
+      city: "Salem",
+      region: "OR",
+      country: "US"
+    })
+    expect(normalizeJobLocation("Remote")).toBeNull()
+    expect(normalizeJobLocation("Salem / Keizer")).toEqual({
+      city: "Salem",
+      region: "OR",
+      country: "US"
+    })
   })
 })
 

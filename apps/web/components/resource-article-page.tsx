@@ -3,7 +3,7 @@ import { FaqSection } from "@/components/faq-section"
 import { JsonLd } from "@/components/json-ld"
 import { LinkCardGrid } from "@/components/link-card-grid"
 import type { ResourceArticle } from "@/lib/seo-taxonomy"
-import { buildBreadcrumbJsonLd, buildCollectionPageJsonLd, buildFaqJsonLd } from "@/lib/structured-data"
+import { buildArticleJsonLd, buildBreadcrumbJsonLd, buildCollectionPageJsonLd, buildFaqJsonLd } from "@/lib/structured-data"
 
 export function ResourceArticlePageView({ article }: { article: ResourceArticle }) {
   const breadcrumbs = [
@@ -31,6 +31,13 @@ export function ResourceArticlePageView({ article }: { article: ResourceArticle 
             name: item.title,
             path: item.href
           }))
+        })}
+      />
+      <JsonLd
+        data={buildArticleJsonLd({
+          headline: article.heroTitle,
+          description: article.seoDescription,
+          path: article.path
         })}
       />
       <JsonLd data={buildFaqJsonLd(article.faqs)} />

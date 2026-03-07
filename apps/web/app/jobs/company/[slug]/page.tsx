@@ -7,7 +7,12 @@ import { getCompanyBySlug } from "@/lib/companies"
 import { listActiveJobsForCompany } from "@/lib/jobs"
 import { buildPageMetadata, snippet } from "@/lib/seo"
 import { buildCompanyJobsPath } from "@/lib/site-paths"
-import { buildBreadcrumbJsonLd, buildCollectionPageJsonLd, buildOrganizationJsonLd } from "@/lib/structured-data"
+import {
+  buildBreadcrumbJsonLd,
+  buildCollectionPageJsonLd,
+  buildCompanyOrganizationJsonLd,
+  buildOrganizationJsonLd
+} from "@/lib/structured-data"
 
 type CompanyPageProps = {
   params: Promise<{
@@ -84,6 +89,11 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
       <JsonLd
         data={[
           buildOrganizationJsonLd(),
+          buildCompanyOrganizationJsonLd({
+            name: company.name,
+            path: companyPath,
+            website: company.website
+          }),
           buildCollectionPageJsonLd({
             name: `${company.name} jobs`,
             description: `${company.name} company profile and active Salem-area openings.`,
