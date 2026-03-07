@@ -4,6 +4,7 @@ import { desc, eq } from "drizzle-orm"
 import { hasRole } from "@/lib/authz"
 import { db } from "@/lib/db"
 import { requirePageRoles } from "@/lib/page-auth"
+import { buildApplicationResumePath } from "@/lib/resume-storage"
 import { applications } from "@repo/db/schema/applications"
 import { jobs } from "@repo/db/schema/jobs"
 
@@ -87,7 +88,7 @@ export default async function DashboardApplicationsPage() {
 
             <div className="flex flex-wrap gap-x-4 gap-y-2 text-slate-700">
               {application.resume ? (
-                <Link href={application.resume} target="_blank" rel="noreferrer" className="underline">
+                <Link href={buildApplicationResumePath(application.id)} target="_blank" rel="noreferrer" className="underline">
                   Resume
                 </Link>
               ) : null}

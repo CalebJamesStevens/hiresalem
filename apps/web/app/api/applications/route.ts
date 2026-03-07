@@ -1,4 +1,3 @@
-import { mkdir, unlink, writeFile } from "node:fs/promises"
 import path from "node:path"
 
 import { and, eq } from "drizzle-orm"
@@ -8,6 +7,7 @@ import { requireApiRoles } from "@/lib/api-auth"
 import { db } from "@/lib/db"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { getRequestKey } from "@/lib/request"
+import { deleteStoredResume, uploadResumeFile } from "@/lib/resume-storage"
 import { applications } from "@repo/db/schema/applications"
 import { jobs } from "@repo/db/schema/jobs"
 
@@ -73,19 +73,6 @@ function validateResumeFile(file: File | null) {
   return { ok: true as const, file }
 }
 
-async function saveResumeFile(file: File) {
-  const extension = path.extname(file.name).toLowerCase()
-  const filename = `${crypto.randomUUID()}${extension}`
-  const relativePath = `/uploads/resumes/${filename}`
-  const absolutePath = path.join(process.cwd(), "public", "uploads", "resumes", filename)
-
-  await mkdir(path.dirname(absolutePath), { recursive: true })
-  const buffer = Buffer.from(await file.arrayBuffer())
-  await writeFile(absolutePath, buffer)
-
-  return relativePath
-}
-
 export async function POST(req: Request) {
   const authResult = await requireApiRoles(["user", "admin"])
   if ("response" in authResult) {
@@ -148,7 +135,7 @@ export async function POST(req: Request) {
 
   try {
     if (resumeValidation.file) {
-      storedResumePath = await saveResumeFile(resumeValidation.file)
+      storedResumePath = await uploadResumeFile(resumeValidation.file)
     }
 
     const [created] = await db
@@ -170,7 +157,7 @@ export async function POST(req: Request) {
     return Response.json(created, { status: 201 })
   } catch (error) {
     if (storedResumePath) {
-      await unlink(path.join(process.cwd(), "public", storedResumePath.slice(1))).catch(() => undefined)
+      await deleteStoredResume(storedResumePath).catch(() => undefined)
     }
 
     const errorCode = typeof error === "object" && error !== null && "code" in error ? error.code : null
