@@ -7,6 +7,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <Link href="/admin/jobs" className="rounded border bg-white px-3 py-2">
           Jobs
         </Link>
+        <Link href="/admin/jobs/import" className="rounded border bg-white px-3 py-2">
+          Import
+        </Link>
         <Link href="/admin/applications" className="rounded border bg-white px-3 py-2">
           Applications
         </Link>

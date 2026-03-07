@@ -22,6 +22,7 @@
   "exports": {
     ".": "./index.ts",
     "./client": "./client.ts",
+    "./import/normalized-jobs": "./import/normalized-jobs.ts",
     "./schema/jobs": "./schema/jobs.ts",
     "./schema/companies": "./schema/companies.ts",
     "./schema/applications": "./schema/applications.ts",

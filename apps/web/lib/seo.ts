@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 
 import { buildJobsSearchPath, hasActiveJobsSearchFilters, type JobsSearchParams } from "@/lib/job-search"
+import { markdownToPlainText } from "@/lib/markdown"
 
 export const siteConfig = {
   name: "HireSalem",
@@ -35,7 +36,7 @@ export function absoluteUrl(path = "/") {
 }
 
 export function snippet(value: string | null | undefined, fallback: string, maxLength = 160) {
-  const source = (value ?? fallback).replace(/\s+/g, " ").trim()
+  const source = (markdownToPlainText(value) || fallback).replace(/\s+/g, " ").trim()
   if (source.length <= maxLength) {
     return source
   }

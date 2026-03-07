@@ -2,6 +2,7 @@ import Link from "next/link"
 
 import { categoryOptions, employmentTypeOptions, workModeOptions } from "@/lib/job-search"
 import type { PublicJobSearchResult } from "@/lib/jobs"
+import { markdownToPlainText } from "@/lib/markdown"
 import { buildCompanyJobsPath } from "@/lib/site-paths"
 
 function formatRelativeDate(date: Date) {
@@ -46,6 +47,7 @@ function formatSalary(job: PublicJobSearchResult) {
 }
 
 export function JobCard({ job }: { job: PublicJobSearchResult }) {
+  const description = markdownToPlainText(job.description) || "No description yet."
   const meta = [
     job.workMode ? workModeOptions.find((option) => option.value === job.workMode)?.label : null,
     job.employmentType ? employmentTypeOptions.find((option) => option.value === job.employmentType)?.label : null,
@@ -79,7 +81,7 @@ export function JobCard({ job }: { job: PublicJobSearchResult }) {
             </div>
           ) : null}
 
-          <p className="text-sm text-slate-700 line-clamp-3">{job.description ?? "No description yet."}</p>
+          <p className="text-sm text-slate-700 line-clamp-3">{description}</p>
         </div>
 
         <div className="flex shrink-0 flex-col items-start gap-3 md:items-end">

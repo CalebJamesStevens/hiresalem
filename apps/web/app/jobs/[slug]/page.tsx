@@ -4,11 +4,13 @@ import { notFound } from "next/navigation"
 import { Breadcrumbs } from "@/components/breadcrumbs"
 import { JsonLd } from "@/components/json-ld"
 import { JobList } from "@/components/job-list"
+import { MarkdownContent } from "@/components/markdown-content"
 import { ApplicationForm } from "@/components/application-form"
 import { TrackedApplyLink } from "@/components/tracked-apply-link"
 import { hasAnyRole, hasRole, normalizeRoles } from "@/lib/authz"
 import { getJobStatusLabel, isJobPublished } from "@/lib/job-listing-billing"
 import { getJobBySlug, listRelatedJobsForJob } from "@/lib/jobs"
+import { markdownToPlainText } from "@/lib/markdown"
 import { buildPageMetadata, snippet } from "@/lib/seo"
 import { buildCompanyJobsPath } from "@/lib/site-paths"
 import { getSessionSafe } from "@/lib/session"
@@ -103,7 +105,7 @@ export default async function JobPage({ params }: JobPageProps) {
         <JsonLd
           data={buildJobPostingJsonLd({
             title: job.title,
-            description: job.description ?? `${job.title} at ${job.companyName ?? "a Salem-area employer"}`,
+            description: markdownToPlainText(job.description) || `${job.title} at ${job.companyName ?? "a Salem-area employer"}`,
             path: `/jobs/${job.slug}`,
             datePosted: job.createdAt,
             employmentType: job.employmentType,
@@ -159,7 +161,7 @@ export default async function JobPage({ params }: JobPageProps) {
           <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
             <div className="space-y-3">
               <h2 className="text-xl font-semibold text-slate-900">About the role</h2>
-              <p className="whitespace-pre-wrap text-slate-700">{job.description ?? "No description provided yet."}</p>
+              <MarkdownContent value={job.description} fallback="No description provided yet." />
             </div>
           </section>
 

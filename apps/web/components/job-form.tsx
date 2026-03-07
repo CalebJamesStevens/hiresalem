@@ -203,6 +203,7 @@ export function JobForm({
           Description
         </label>
         <textarea id="description" name="description" rows={6} disabled={disabled} className="w-full rounded border px-3 py-2" />
+        <p className="text-xs text-slate-500">Markdown is supported for job descriptions.</p>
       </div>
 
       <div className="space-y-1">

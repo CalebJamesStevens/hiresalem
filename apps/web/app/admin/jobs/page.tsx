@@ -14,7 +14,12 @@ export default async function AdminJobsPage() {
 
   return (
     <section className="space-y-4">
-      <h1 className="text-2xl font-bold">Admin job moderation</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold">Admin job moderation</h1>
+        <Link href="/admin/jobs/import" className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700">
+          Import batch JSON
+        </Link>
+      </div>
       {jobs.length === 0 ? <p className="text-slate-600">No jobs found.</p> : null}
 
       <div className="space-y-3">
