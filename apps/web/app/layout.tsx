@@ -7,7 +7,7 @@ import { AnalyticsListener } from "@/components/analytics-listener"
 import { JsonLd } from "@/components/json-ld"
 import { Navbar } from "@/components/navbar"
 import { SiteBrand } from "@/components/site-brand"
-import { getGoatCounterEndpoint } from "@/lib/analytics"
+import { getGoatCounterEndpoint, getGoatCounterScriptSrc } from "@/lib/analytics"
 import { siteConfig } from "@/lib/seo"
 import { buildOrganizationJsonLd, buildWebsiteJsonLd } from "@/lib/structured-data"
 import "../styles/globals.css"
@@ -87,7 +87,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </footer>
         {goatCounterSite ? (
           <Script
-            src="https://gc.zgo.at/count.js"
+            src={getGoatCounterScriptSrc(goatCounterSite)}
             data-goatcounter={getGoatCounterEndpoint(goatCounterSite)}
             strategy="afterInteractive"
           />

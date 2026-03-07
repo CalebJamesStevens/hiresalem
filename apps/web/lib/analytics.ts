@@ -10,12 +10,25 @@ declare global {
   }
 }
 
-export function getGoatCounterEndpoint(site: string) {
-  if (site.startsWith("http://") || site.startsWith("https://")) {
-    return site
-  }
+function getGoatCounterBase(site: string) {
+  const trimmedSite = site.trim()
+  const siteWithProtocol = trimmedSite.startsWith("//")
+    ? `https:${trimmedSite}`
+    : trimmedSite.startsWith("http://") || trimmedSite.startsWith("https://")
+      ? trimmedSite
+      : trimmedSite.includes(".") || trimmedSite.includes("/")
+        ? `https://${trimmedSite}`
+        : `https://${trimmedSite}.goatcounter.com`
 
-  return `https://${site}.goatcounter.com/count`
+  return siteWithProtocol.replace(/\/count(?:\.js)?\/?$/, "")
+}
+
+export function getGoatCounterEndpoint(site: string) {
+  return `${getGoatCounterBase(site)}/count`
+}
+
+export function getGoatCounterScriptSrc(site: string) {
+  return `${getGoatCounterBase(site)}/count.js`
 }
 
 export function trackAnalyticsEvent(eventName: string) {
