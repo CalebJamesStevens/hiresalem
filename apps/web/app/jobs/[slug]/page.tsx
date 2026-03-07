@@ -83,6 +83,7 @@ export default async function JobPage({ params }: JobPageProps) {
   const canApplyInApp = job.applyType === "onsite" && isPublished && hasAnyRole(roles, ["user", "admin"])
   const signedInName = typeof session?.user?.name === "string" ? session.user.name : null
   const signedInEmail = typeof session?.user?.email === "string" ? session.user.email : null
+  const signInHref = `/signin?callbackUrl=${encodeURIComponent(`/jobs/${job.slug}`)}`
   const companyPath = job.companySlug ? buildCompanyJobsPath(job.companySlug) : null
   const breadcrumbs = [
     { name: "Home", href: "/" },
@@ -90,9 +91,31 @@ export default async function JobPage({ params }: JobPageProps) {
     { name: job.title, href: `/jobs/${job.slug}` }
   ]
   const localContext = `${job.companyName ?? "This Salem-area employer"} is hiring${job.location ? ` in ${job.location}` : " in Salem Oregon"}. Use this page for the role details, then compare it with broader Salem Oregon jobs pages if you want nearby alternatives.`
+  const mobileApplyButtonClassName =
+    "inline-flex w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-3 text-sm font-medium text-white"
+  const mobileApplyCta =
+    job.applyType === "external" && isPublished && job.applyUrl
+      ? {
+          kind: "external" as const,
+          href: job.applyUrl,
+          label: "Apply on company site"
+        }
+      : canApplyInApp
+        ? {
+            kind: "anchor" as const,
+            href: "#application-form",
+            label: "Apply now"
+          }
+        : job.applyType === "onsite" && isPublished && !userId
+          ? {
+              kind: "internal" as const,
+              href: signInHref,
+              label: "Sign in to apply"
+            }
+          : null
 
   return (
-    <article className="space-y-8">
+    <article className={mobileApplyCta ? "min-w-0 space-y-8 pb-32 lg:pb-0" : "min-w-0 space-y-8"}>
       <JsonLd
         data={buildBreadcrumbJsonLd(
           breadcrumbs.map((item) => ({
@@ -125,21 +148,21 @@ export default async function JobPage({ params }: JobPageProps) {
         />
       ) : null}
 
-      <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="space-y-4">
+      <section className="min-w-0 overflow-hidden rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="min-w-0 space-y-4">
           <Breadcrumbs items={breadcrumbs} />
           <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
             <span className="rounded-full bg-slate-100 px-3 py-1">{job.applyType === "onsite" ? "Apply in app" : "External apply"}</span>
             <span className="rounded-full bg-slate-100 px-3 py-1">{statusLabel}</span>
           </div>
-          <div className="space-y-2">
-            <h1 className="text-3xl font-bold tracking-tight text-slate-950 md:text-4xl">{job.title}</h1>
+          <div className="min-w-0 space-y-2">
+            <h1 className="break-words text-3xl font-bold tracking-tight text-slate-950 md:text-4xl">{job.title}</h1>
             <p className="text-base text-slate-600">{job.location ?? "Salem, OR"}</p>
             {job.companyName ? (
-              <p className="text-sm text-slate-700">
+              <p className="break-words text-sm text-slate-700">
                 Hiring company:{" "}
                 {companyPath ? (
-                  <Link href={companyPath} className="font-medium underline underline-offset-4">
+                  <Link href={companyPath} className="break-words font-medium underline underline-offset-4">
                     {job.companyName}
                   </Link>
                 ) : (
@@ -156,17 +179,17 @@ export default async function JobPage({ params }: JobPageProps) {
         </div>
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)] lg:items-start">
-        <div className="space-y-6">
-          <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="space-y-3">
+      <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)] lg:items-start">
+        <div className="min-w-0 space-y-6">
+          <section className="min-w-0 overflow-hidden rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="min-w-0 space-y-3">
               <h2 className="text-xl font-semibold text-slate-900">About the role</h2>
               <MarkdownContent value={job.description} fallback="No description provided yet." />
             </div>
           </section>
 
-          <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="space-y-3">
+          <section className="min-w-0 overflow-hidden rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="min-w-0 space-y-3">
               <h2 className="text-xl font-semibold text-slate-900">Salem Oregon context</h2>
               <p className="text-sm leading-7 text-slate-700">{localContext}</p>
               <p className="text-sm leading-7 text-slate-700">
@@ -184,7 +207,7 @@ export default async function JobPage({ params }: JobPageProps) {
           </section>
 
           {relatedJobs.length > 0 ? (
-            <section className="space-y-4 rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+            <section className="min-w-0 space-y-4 overflow-hidden rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
               <div>
                 <h2 className="text-xl font-semibold text-slate-900">Related jobs</h2>
                 <p className="mt-1 text-sm text-slate-600">More local openings related by company, location, or role profile.</p>
@@ -193,8 +216,8 @@ export default async function JobPage({ params }: JobPageProps) {
             </section>
           ) : null}
 
-          <section className="rounded-[2rem] border border-slate-200 bg-slate-950 p-6 text-slate-50 shadow-sm">
-            <div className="space-y-2">
+          <section className="min-w-0 overflow-hidden rounded-[2rem] border border-slate-200 bg-slate-950 p-6 text-slate-50 shadow-sm">
+            <div className="min-w-0 space-y-2">
               <h2 className="text-xl font-semibold">What to expect</h2>
               <p className="text-sm text-slate-300">
                 Strong applications usually include a resume or profile link plus a short note that ties your experience to the role.
@@ -203,7 +226,7 @@ export default async function JobPage({ params }: JobPageProps) {
           </section>
         </div>
 
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           {job.applyType === "external" ? (
             <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
               <h2 className="text-xl font-semibold text-slate-900">Apply through the employer</h2>
@@ -235,7 +258,7 @@ export default async function JobPage({ params }: JobPageProps) {
 
           {job.applyType === "onsite" && isPublished && !userId ? (
             <div className="rounded-[2rem] border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm">
-              <Link className="font-medium underline" href={`/signin?callbackUrl=${encodeURIComponent(`/jobs/${job.slug}`)}`}>
+              <Link className="font-medium underline" href={signInHref}>
                 Sign in
               </Link>{" "}
               with a user account to apply and keep track of your applications.
@@ -249,16 +272,38 @@ export default async function JobPage({ params }: JobPageProps) {
           ) : null}
 
           {canApplyInApp ? (
-            <ApplicationForm
-              jobId={job.id}
-              jobTitle={job.title}
-              jobLocation={job.location}
-              defaultName={signedInName}
-              defaultEmail={signedInEmail}
-            />
+            <div id="application-form" className="scroll-mt-24">
+              <ApplicationForm
+                jobId={job.id}
+                jobTitle={job.title}
+                jobLocation={job.location}
+                defaultName={signedInName}
+                defaultEmail={signedInEmail}
+              />
+            </div>
           ) : null}
         </div>
       </div>
+
+      {mobileApplyCta ? (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-4 pt-3 shadow-[0_-12px_30px_rgba(15,23,42,0.12)] backdrop-blur supports-[backdrop-filter]:bg-white/85 lg:hidden">
+          <div className="mx-auto w-full max-w-md pb-[calc(env(safe-area-inset-bottom)+1rem)]">
+            {mobileApplyCta.kind === "external" ? (
+              <TrackedApplyLink href={mobileApplyCta.href} className={mobileApplyButtonClassName}>
+                {mobileApplyCta.label}
+              </TrackedApplyLink>
+            ) : mobileApplyCta.kind === "internal" ? (
+              <Link href={mobileApplyCta.href} className={mobileApplyButtonClassName}>
+                {mobileApplyCta.label}
+              </Link>
+            ) : (
+              <a href={mobileApplyCta.href} className={mobileApplyButtonClassName}>
+                {mobileApplyCta.label}
+              </a>
+            )}
+          </div>
+        </div>
+      ) : null}
     </article>
   )
 }
