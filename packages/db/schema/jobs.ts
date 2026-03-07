@@ -6,6 +6,7 @@ export const applyTypeEnum = pgEnum("apply_type", ["onsite", "external"])
 export const workModeEnum = pgEnum("work_mode", ["onsite", "hybrid", "remote"])
 export const employmentTypeEnum = pgEnum("employment_type", ["full_time", "part_time", "contract", "internship", "temporary"])
 export const salaryIntervalEnum = pgEnum("salary_interval", ["hour", "week", "month", "year"])
+export const jobPaymentStatusEnum = pgEnum("job_payment_status", ["pending", "paid", "canceled", "expired"])
 export const jobCategoryEnum = pgEnum("job_category", [
   "engineering",
   "design",
@@ -40,5 +41,11 @@ export const jobs = pgTable("jobs", {
   applyType: applyTypeEnum("apply_type").default("onsite").notNull(),
   applyUrl: text("apply_url"),
   isActive: boolean("is_active").default(true).notNull(),
+  listingDurationDays: integer("listing_duration_days").default(30).notNull(),
+  paymentStatus: jobPaymentStatusEnum("payment_status").default("paid").notNull(),
+  activatedAt: timestamp("activated_at"),
+  expiresAt: timestamp("expires_at"),
+  stripeCheckoutSessionId: text("stripe_checkout_session_id").unique(),
+  stripePaymentIntentId: text("stripe_payment_intent_id"),
   createdAt: timestamp("created_at").defaultNow().notNull()
 })

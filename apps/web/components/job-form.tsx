@@ -1,15 +1,32 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
 
 import { categoryOptions, employmentTypeOptions, salaryIntervalOptions, workModeOptions } from "@/lib/job-search"
+import {
+  calculateJobListingPrice,
+  formatJobListingPrice,
+  JOB_LISTING_DEFAULT_DAYS,
+  JOB_LISTING_MAX_DAYS,
+  JOB_LISTING_MIN_DAYS
+} from "@/lib/job-listing-billing"
 
 type ApplyType = "onsite" | "external"
 
-export function JobForm({ disabled = false }: { disabled?: boolean }) {
+export function JobForm({
+  disabled = false,
+  requiresPayment = true
+}: {
+  disabled?: boolean
+  requiresPayment?: boolean
+}) {
+  const router = useRouter()
   const [status, setStatus] = useState<string | null>(null)
   const [applyType, setApplyType] = useState<ApplyType>("onsite")
+  const [listingDurationDays, setListingDurationDays] = useState(JOB_LISTING_DEFAULT_DAYS)
   const [isPending, startTransition] = useTransition()
+  const listingTotal = formatJobListingPrice(calculateJobListingPrice(listingDurationDays))
 
   function onSubmit(formData: FormData) {
     if (disabled) {
@@ -36,6 +53,7 @@ export function JobForm({ disabled = false }: { disabled?: boolean }) {
         description: String(formData.get("description") ?? ""),
         applyType,
         applyUrl: applyType === "external" ? applyUrl : undefined,
+        listingDurationDays: String(formData.get("listingDurationDays") ?? JOB_LISTING_DEFAULT_DAYS),
         website: String(formData.get("website") ?? "")
       }
 
@@ -46,7 +64,15 @@ export function JobForm({ disabled = false }: { disabled?: boolean }) {
       })
 
       if (response.ok) {
+        const body = (await response.json().catch(() => ({}))) as { checkoutUrl?: string }
+
+        if (body.checkoutUrl) {
+          window.location.assign(body.checkoutUrl)
+          return
+        }
+
         setStatus("Job posted.")
+        router.refresh()
         return
       }
 
@@ -177,6 +203,28 @@ export function JobForm({ disabled = false }: { disabled?: boolean }) {
           Description
         </label>
         <textarea id="description" name="description" rows={6} disabled={disabled} className="w-full rounded border px-3 py-2" />
+      </div>
+
+      <div className="space-y-1">
+        <label htmlFor="listingDurationDays" className="text-sm font-medium">
+          Listing duration (days)
+        </label>
+        <input
+          id="listingDurationDays"
+          name="listingDurationDays"
+          type="number"
+          min={JOB_LISTING_MIN_DAYS}
+          max={JOB_LISTING_MAX_DAYS}
+          value={listingDurationDays}
+          disabled={disabled}
+          onChange={(event) => {
+            const nextValue = Number.parseInt(event.target.value || String(JOB_LISTING_DEFAULT_DAYS), 10)
+            const safeValue = Number.isNaN(nextValue) ? JOB_LISTING_DEFAULT_DAYS : nextValue
+            setListingDurationDays(Math.min(JOB_LISTING_MAX_DAYS, Math.max(JOB_LISTING_MIN_DAYS, safeValue)))
+          }}
+          className="w-full rounded border px-3 py-2"
+        />
+        {requiresPayment ? <p className="text-sm text-slate-600">Businesses are charged $5/day. Total due today: {listingTotal}.</p> : null}
       </div>
 
       <div className="space-y-1">

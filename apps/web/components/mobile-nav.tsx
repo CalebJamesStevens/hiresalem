@@ -4,6 +4,8 @@ import Link from "next/link"
 import { useEffect, useState, type ReactNode } from "react"
 import { createPortal } from "react-dom"
 
+import { SiteBrand } from "@/components/site-brand"
+
 type NavItem = {
   href: string
   label: string
@@ -75,7 +77,11 @@ export function MobileNav({
               >
                 <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">HireSalem</p>
+                    <SiteBrand
+                      className="gap-2"
+                      iconClassName="h-8 w-8"
+                      labelClassName="text-sm font-semibold tracking-[0.16em]"
+                    />
                     <p className="mt-1 text-sm text-slate-600">Local Salem-area navigation</p>
                   </div>
                   <button

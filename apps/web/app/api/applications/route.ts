@@ -5,6 +5,7 @@ import { z } from "zod"
 
 import { requireApiRoles } from "@/lib/api-auth"
 import { db } from "@/lib/db"
+import { isJobPublished } from "@/lib/job-listing-billing"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { getRequestKey } from "@/lib/request"
 import { deleteStoredResume, uploadResumeFile } from "@/lib/resume-storage"
@@ -113,7 +114,7 @@ export async function POST(req: Request) {
 
   const [job] = await db.select().from(jobs).where(eq(jobs.id, parsed.data.jobId)).limit(1)
 
-  if (!job || !job.isActive) {
+  if (!job || !isJobPublished(job)) {
     return Response.json({ error: "This job is not accepting applications" }, { status: 400 })
   }
 

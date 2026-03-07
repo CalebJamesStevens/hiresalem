@@ -2,6 +2,7 @@ import Link from "next/link"
 
 import { JobModerationActions } from "@/components/job-moderation-actions"
 import { hasRole } from "@/lib/authz"
+import { getJobStatusLabel, isJobExpired } from "@/lib/job-listing-billing"
 import { listEmployerApplicantJobs } from "@/lib/applicants"
 import { requirePageRoles } from "@/lib/page-auth"
 
@@ -48,15 +49,16 @@ export default async function DashboardJobsPage({ searchParams }: DashboardJobsP
                   {job.title}
                 </Link>
                 <p className="text-sm text-slate-600">
-                  {job.location ?? "Salem, OR"} • {job.applyType} • {job.isActive ? "Active" : "Closed"}
+                  {job.location ?? "Salem, OR"} • {job.applyType} • {getJobStatusLabel(job)}
                 </p>
+                {job.expiresAt ? <p className="text-sm text-slate-600">Paid through {job.expiresAt.toLocaleDateString()}</p> : null}
                 <p className="text-sm text-slate-600">
                   <Link href={`/dashboard/applicants?jobId=${job.id}`} className="underline">
                     {job.applicationCount} applicant{job.applicationCount === 1 ? "" : "s"}
                   </Link>
                 </p>
               </div>
-              <JobModerationActions jobId={job.id} isActive={job.isActive} />
+              <JobModerationActions jobId={job.id} isActive={job.isActive} canReopen={job.paymentStatus === "paid" && !isJobExpired(job)} />
             </div>
           </article>
         ))}

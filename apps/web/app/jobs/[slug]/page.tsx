@@ -7,6 +7,7 @@ import { JobList } from "@/components/job-list"
 import { ApplicationForm } from "@/components/application-form"
 import { TrackedApplyLink } from "@/components/tracked-apply-link"
 import { hasAnyRole, hasRole, normalizeRoles } from "@/lib/authz"
+import { getJobStatusLabel, isJobPublished } from "@/lib/job-listing-billing"
 import { getJobBySlug, listRelatedJobsForJob } from "@/lib/jobs"
 import { buildPageMetadata, snippet } from "@/lib/seo"
 import { buildCompanyJobsPath } from "@/lib/site-paths"
@@ -46,7 +47,7 @@ export async function generateMetadata({ params }: JobPageProps) {
     title,
     description,
     path: `/jobs/${job.slug}`,
-    robots: job.isActive
+    robots: isJobPublished(job)
       ? undefined
       : {
           index: false,
@@ -69,13 +70,15 @@ export default async function JobPage({ params }: JobPageProps) {
     notFound()
   }
 
+  const isPublished = isJobPublished(job)
+  const statusLabel = getJobStatusLabel(job)
   const canViewInactive = Boolean(userId && (isAdmin || job.ownerAuthId === userId))
-  if (!job.isActive && !canViewInactive) {
+  if (!isPublished && !canViewInactive) {
     notFound()
   }
 
   const [relatedJobs] = await Promise.all([listRelatedJobsForJob(job, 4)])
-  const canApplyInApp = job.applyType === "onsite" && job.isActive && hasAnyRole(roles, ["user", "admin"])
+  const canApplyInApp = job.applyType === "onsite" && isPublished && hasAnyRole(roles, ["user", "admin"])
   const signedInName = typeof session?.user?.name === "string" ? session.user.name : null
   const signedInEmail = typeof session?.user?.email === "string" ? session.user.email : null
   const companyPath = job.companySlug ? buildCompanyJobsPath(job.companySlug) : null
@@ -96,7 +99,7 @@ export default async function JobPage({ params }: JobPageProps) {
           }))
         )}
       />
-      {job.isActive ? (
+      {isPublished ? (
         <JsonLd
           data={buildJobPostingJsonLd({
             title: job.title,
@@ -125,7 +128,7 @@ export default async function JobPage({ params }: JobPageProps) {
           <Breadcrumbs items={breadcrumbs} />
           <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
             <span className="rounded-full bg-slate-100 px-3 py-1">{job.applyType === "onsite" ? "Apply in app" : "External apply"}</span>
-            <span className="rounded-full bg-slate-100 px-3 py-1">{job.isActive ? "Open role" : "Closed role"}</span>
+            <span className="rounded-full bg-slate-100 px-3 py-1">{statusLabel}</span>
           </div>
           <div className="space-y-2">
             <h1 className="text-3xl font-bold tracking-tight text-slate-950 md:text-4xl">{job.title}</h1>
@@ -143,9 +146,9 @@ export default async function JobPage({ params }: JobPageProps) {
               </p>
             ) : null}
           </div>
-          {!job.isActive ? (
+          {!isPublished ? (
             <p className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-              This role is currently closed.
+              This role is currently {statusLabel.toLowerCase()}.
             </p>
           ) : null}
         </div>
@@ -206,13 +209,15 @@ export default async function JobPage({ params }: JobPageProps) {
                 This job uses an external application flow. We&apos;ll send you directly to the company site.
               </p>
               <div className="mt-5">
-                {job.applyUrl ? (
+                {isPublished && job.applyUrl ? (
                   <TrackedApplyLink
                     href={job.applyUrl}
                     className="inline-flex rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white"
                   >
                     Apply on company site
                   </TrackedApplyLink>
+                ) : !isPublished ? (
+                  <p className="text-sm text-slate-600">This listing is not currently accepting applications.</p>
                 ) : (
                   <p className="text-sm text-slate-600">External apply link not available.</p>
                 )}
@@ -220,13 +225,13 @@ export default async function JobPage({ params }: JobPageProps) {
             </div>
           ) : null}
 
-          {job.applyType === "onsite" && !job.isActive ? (
+          {job.applyType === "onsite" && !isPublished ? (
             <div className="rounded-[2rem] border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm">
-              This position is closed and no longer accepting applications.
+              This position is not currently accepting applications.
             </div>
           ) : null}
 
-          {job.applyType === "onsite" && job.isActive && !userId ? (
+          {job.applyType === "onsite" && isPublished && !userId ? (
             <div className="rounded-[2rem] border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm">
               <Link className="font-medium underline" href={`/signin?callbackUrl=${encodeURIComponent(`/jobs/${job.slug}`)}`}>
                 Sign in
@@ -235,7 +240,7 @@ export default async function JobPage({ params }: JobPageProps) {
             </div>
           ) : null}
 
-          {job.applyType === "onsite" && job.isActive && userId && !canApplyInApp ? (
+          {job.applyType === "onsite" && isPublished && userId && !canApplyInApp ? (
             <div className="rounded-[2rem] border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm">
               Your account role cannot submit applications.
             </div>

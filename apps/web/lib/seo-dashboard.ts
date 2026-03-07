@@ -1,6 +1,7 @@
 import { and, desc, eq, isNull, sql } from "drizzle-orm"
 
 import { db } from "@/lib/db"
+import { getPublishedJobsFilter } from "@/lib/job-listing-billing"
 import { listCompaniesWithActiveJobsForSitemap } from "@/lib/jobs"
 import { resourceArticles, jobsLandingPages } from "@/lib/seo-taxonomy"
 import { getSitemapCounts } from "@/lib/sitemaps"
@@ -14,7 +15,7 @@ export async function getSeoDashboardData() {
         total: sql<number>`count(*)::int`
       })
       .from(jobs)
-      .where(eq(jobs.isActive, true)),
+      .where(getPublishedJobsFilter()),
     listCompaniesWithActiveJobsForSitemap(),
     getSitemapCounts(),
     db
@@ -25,7 +26,7 @@ export async function getSeoDashboardData() {
         descriptionLength: sql<number>`char_length(trim(coalesce(${jobs.description}, '')))`
       })
       .from(jobs)
-      .where(and(eq(jobs.isActive, true), sql`char_length(trim(coalesce(${jobs.description}, ''))) < 140`))
+      .where(and(getPublishedJobsFilter(), sql`char_length(trim(coalesce(${jobs.description}, ''))) < 140`))
       .orderBy(desc(jobs.createdAt))
       .limit(10),
     db
@@ -37,7 +38,7 @@ export async function getSeoDashboardData() {
       })
       .from(jobs)
       .leftJoin(companies, eq(jobs.companyId, companies.id))
-      .where(and(eq(jobs.isActive, true), isNull(companies.id)))
+      .where(and(getPublishedJobsFilter(), isNull(companies.id)))
       .orderBy(desc(jobs.createdAt))
       .limit(10)
   ])

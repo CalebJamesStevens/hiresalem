@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm"
 import { z } from "zod"
 
 import { hasRole, normalizeRoles } from "@/lib/authz"
+import { getJobStatusLabel, isJobExpired, isJobPublished } from "@/lib/job-listing-billing"
 import { getSessionSafe } from "@/lib/session"
 import { requireApiRoles } from "@/lib/api-auth"
 import { db } from "@/lib/db"
@@ -25,7 +26,7 @@ export async function GET(_req: Request, { params }: JobRouteContext) {
     return Response.json({ error: "Job not found" }, { status: 404 })
   }
 
-  if (job.isActive) {
+  if (isJobPublished(job)) {
     return Response.json(job)
   }
 
@@ -63,6 +64,16 @@ export async function PATCH(req: Request, { params }: JobRouteContext) {
   const isAdmin = hasRole(authResult.user.roles, "admin")
   if (!isAdmin && existing.ownerAuthId !== authResult.user.id) {
     return Response.json({ error: "Forbidden" }, { status: 403 })
+  }
+
+  if (parsed.data.isActive) {
+    if (existing.paymentStatus !== "paid") {
+      return Response.json({ error: `This listing cannot be reopened: ${getJobStatusLabel(existing).toLowerCase()}.` }, { status: 400 })
+    }
+
+    if (isJobExpired(existing)) {
+      return Response.json({ error: "This listing has expired. Create a new paid listing to publish it again." }, { status: 400 })
+    }
   }
 
   const [updated] = await db

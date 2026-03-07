@@ -4,6 +4,7 @@ import Link from "next/link"
 import { signOut } from "next-auth/react"
 import { useEffect, useState } from "react"
 
+import { SiteBrand } from "@/components/site-brand"
 import { hasRole, normalizeRoles } from "@/lib/authz"
 import { MobileNav } from "@/components/mobile-nav"
 
@@ -71,9 +72,7 @@ export function Navbar() {
   return (
     <header className="relative z-[90] border-b bg-white/80 backdrop-blur">
       <nav className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
-        <Link href="/" className="font-semibold">
-          HireSalem
-        </Link>
+        <SiteBrand iconClassName="h-11 w-11" />
 
         <ul className="hidden items-center gap-4 text-sm md:flex">
           {publicNavItems.map((item) => (

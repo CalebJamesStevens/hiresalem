@@ -3,11 +3,39 @@ import { and, asc, desc, eq, ilike, sql, type SQL } from "drizzle-orm"
 import { db } from "@/lib/db"
 import type { JobsSearchParams } from "@/lib/job-search"
 import { JOBS_PAGE_SIZE, parseJobsSearchParams } from "@/lib/job-search"
+import { getPublishedJobsFilter } from "@/lib/job-listing-billing"
 import { companies } from "@repo/db/schema/companies"
 import { jobs } from "@repo/db/schema/jobs"
 
 export type Job = typeof jobs.$inferSelect
-export type PublicJobSearchResult = Job & {
+type PublicJobFields = Pick<
+  Job,
+  | "id"
+  | "slug"
+  | "title"
+  | "ownerAuthId"
+  | "companyId"
+  | "location"
+  | "salary"
+  | "workMode"
+  | "employmentType"
+  | "category"
+  | "salaryMin"
+  | "salaryMax"
+  | "salaryCurrency"
+  | "salaryInterval"
+  | "description"
+  | "applyType"
+  | "applyUrl"
+  | "isActive"
+  | "listingDurationDays"
+  | "paymentStatus"
+  | "activatedAt"
+  | "expiresAt"
+  | "createdAt"
+>
+
+export type PublicJobSearchResult = PublicJobFields & {
   companyName: string | null
   companySlug: string | null
   companyWebsite: string | null
@@ -49,7 +77,7 @@ function getSalaryKnownOrder() {
 }
 
 function buildPublicJobFilters(params: JobsSearchParams) {
-  const filters: SQL[] = [eq(jobs.isActive, true)]
+  const filters: SQL[] = [getPublishedJobsFilter()]
   const searchVector = getSearchVector()
   const searchTerm = params.q ? `%${params.q}%` : null
   const tsQuery = params.q ? sql`websearch_to_tsquery('english', ${params.q})` : null
@@ -125,6 +153,10 @@ function getPublicJobSelectShape(relevance: SQL<number>) {
     applyType: jobs.applyType,
     applyUrl: jobs.applyUrl,
     isActive: jobs.isActive,
+    listingDurationDays: jobs.listingDurationDays,
+    paymentStatus: jobs.paymentStatus,
+    activatedAt: jobs.activatedAt,
+    expiresAt: jobs.expiresAt,
     createdAt: jobs.createdAt,
     companyName: companies.name,
     companySlug: companies.slug,
@@ -204,7 +236,7 @@ export async function listLatestPublicJobs(limit = 6) {
     })
     .from(jobs)
     .leftJoin(companies, eq(jobs.companyId, companies.id))
-    .where(eq(jobs.isActive, true))
+    .where(getPublishedJobsFilter())
     .orderBy(desc(jobs.createdAt))
     .limit(limit)
 
@@ -222,7 +254,7 @@ export async function listTopEmployers(limit = 5): Promise<TopEmployer[]> {
     })
     .from(companies)
     .innerJoin(jobs, eq(companies.id, jobs.companyId))
-    .where(eq(jobs.isActive, true))
+    .where(getPublishedJobsFilter())
     .groupBy(companies.id)
     .orderBy(desc(sql<number>`count(${jobs.id})::int`), asc(companies.name))
     .limit(limit)
@@ -235,7 +267,7 @@ export async function listPublicJobsForSitemap() {
       createdAt: jobs.createdAt
     })
     .from(jobs)
-    .where(eq(jobs.isActive, true))
+    .where(getPublishedJobsFilter())
     .orderBy(desc(jobs.createdAt))
 }
 
@@ -277,6 +309,12 @@ export async function getJobBySlug(slug: string) {
       applyType: jobs.applyType,
       applyUrl: jobs.applyUrl,
       isActive: jobs.isActive,
+      listingDurationDays: jobs.listingDurationDays,
+      paymentStatus: jobs.paymentStatus,
+      activatedAt: jobs.activatedAt,
+      expiresAt: jobs.expiresAt,
+      stripeCheckoutSessionId: jobs.stripeCheckoutSessionId,
+      stripePaymentIntentId: jobs.stripePaymentIntentId,
       createdAt: jobs.createdAt,
       companyName: companies.name,
       companySlug: companies.slug,
@@ -294,7 +332,7 @@ export async function getPublicActiveJobBySlug(slug: string) {
   const [job] = await db
     .select()
     .from(jobs)
-    .where(and(eq(jobs.slug, slug), eq(jobs.isActive, true)))
+    .where(and(eq(jobs.slug, slug), getPublishedJobsFilter()))
     .limit(1)
 
   return job ?? null
@@ -304,7 +342,7 @@ export async function listActiveJobsForCompany(companyId: string) {
   return db
     .select()
     .from(jobs)
-    .where(and(eq(jobs.companyId, companyId), eq(jobs.isActive, true)))
+    .where(and(eq(jobs.companyId, companyId), getPublishedJobsFilter()))
     .orderBy(desc(jobs.createdAt))
 }
 
@@ -351,7 +389,7 @@ export async function listRelatedJobsForJob(job: PublicJobDetail, limit = 4) {
     })
     .from(jobs)
     .leftJoin(companies, eq(jobs.companyId, companies.id))
-    .where(and(eq(jobs.isActive, true), sql`${jobs.id} <> ${job.id}`))
+    .where(and(getPublishedJobsFilter(), sql`${jobs.id} <> ${job.id}`))
     .orderBy(desc(relationScore), desc(jobs.createdAt))
     .limit(limit)
 
@@ -368,6 +406,6 @@ export async function listCompaniesWithActiveJobsForSitemap() {
     })
     .from(companies)
     .innerJoin(jobs, eq(companies.id, jobs.companyId))
-    .where(eq(jobs.isActive, true))
+    .where(getPublishedJobsFilter())
     .orderBy(desc(companies.createdAt))
 }

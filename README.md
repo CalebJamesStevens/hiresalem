@@ -31,6 +31,9 @@ Copy `.env.example` to `.env` and set real values:
 - `AUTH_KEYCLOAK_ADMIN_ID` (optional, recommended for signup/admin actions)
 - `AUTH_KEYCLOAK_ADMIN_SECRET` (optional, recommended for signup/admin actions)
 - `AUTH_KEYCLOAK_DEFAULT_ROLE` (defaults to `user`)
+- `NEXT_PUBLIC_APP_URL` (recommended for Stripe redirects)
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
 
 Keycloak requirements for signup:
 
@@ -45,6 +48,13 @@ Business upgrade flow:
 - signed-in `user` accounts can visit `/become-business`
 - the app creates a company profile, grants the Keycloak `business` role, and refreshes the app session
 - business-posted jobs are automatically linked to the account's company profile
+
+Paid listings:
+
+- business job listings use Stripe Checkout
+- listings are billed at `$5/day`
+- a listing stays hidden until the Stripe payment succeeds
+- configure your Stripe webhook endpoint to post `checkout.session.completed`, `checkout.session.expired`, and `checkout.session.async_payment_failed` to `/api/stripe/webhooks`
 
 ## Commands
 

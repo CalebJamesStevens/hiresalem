@@ -6,10 +6,12 @@ import { useRouter } from "next/navigation"
 export function JobModerationActions({
   jobId,
   isActive,
+  canReopen = true,
   canDelete = true
 }: {
   jobId: string
   isActive: boolean
+  canReopen?: boolean
   canDelete?: boolean
 }) {
   const router = useRouter()
@@ -61,10 +63,10 @@ export function JobModerationActions({
       <button
         type="button"
         onClick={toggleActive}
-        disabled={isPending}
+        disabled={isPending || (!isActive && !canReopen)}
         className="rounded border px-3 py-1 text-xs font-medium"
       >
-        {isActive ? "Close" : "Reopen"}
+        {isActive ? "Close" : canReopen ? "Reopen" : "Unavailable"}
       </button>
 
       {canDelete ? (
