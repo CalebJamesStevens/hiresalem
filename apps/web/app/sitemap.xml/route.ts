@@ -1,6 +1,6 @@
 import { buildSitemapIndexXml, buildXmlResponse, getJobsSitemapEntries, getPagesSitemapEntries } from "@/lib/sitemaps"
 
-export const revalidate = 3600
+export const dynamic = "force-dynamic"
 
 function getLatestLastModified(entries: Array<{ lastModified?: Date | string }>) {
   return entries.reduce<Date | undefined>((latest, entry) => {
