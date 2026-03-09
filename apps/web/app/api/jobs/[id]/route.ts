@@ -6,6 +6,7 @@ import { getJobStatusLabel, isJobExpired, isJobPublished } from "@/lib/job-listi
 import { getSessionSafe } from "@/lib/session"
 import { requireApiRoles } from "@/lib/api-auth"
 import { db } from "@/lib/db"
+import { syncGoogleIndexingForJobTransition } from "@/lib/job-indexing"
 import { jobs } from "@repo/db/schema/jobs"
 
 const updateJobSchema = z.object({
@@ -82,6 +83,11 @@ export async function PATCH(req: Request, { params }: JobRouteContext) {
     .where(eq(jobs.id, id))
     .returning()
 
+  await syncGoogleIndexingForJobTransition({
+    before: existing,
+    after: updated ?? existing
+  })
+
   return Response.json(updated)
 }
 
@@ -104,6 +110,11 @@ export async function DELETE(_req: Request, { params }: JobRouteContext) {
   }
 
   await db.delete(jobs).where(eq(jobs.id, id))
+
+  await syncGoogleIndexingForJobTransition({
+    before: existing,
+    after: null
+  })
 
   return Response.json({ ok: true })
 }

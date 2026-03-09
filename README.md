@@ -34,6 +34,8 @@ Copy `.env.example` to `.env` and set real values:
 - `NEXT_PUBLIC_APP_URL` (recommended for Stripe redirects)
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`
+- `GOOGLE_INDEXING_API_SERVICE_ACCOUNT_JSON` or both `GOOGLE_INDEXING_API_CLIENT_EMAIL` + `GOOGLE_INDEXING_API_PRIVATE_KEY` (optional, recommended for job URL indexing)
+- `CRON_SECRET` (required if you want cron endpoints protected)
 
 Keycloak requirements for signup:
 
@@ -55,6 +57,8 @@ Paid listings:
 - listings are billed at `$5/day`
 - a listing stays hidden until the Stripe payment succeeds
 - configure your Stripe webhook endpoint to post `checkout.session.completed`, `checkout.session.expired`, and `checkout.session.async_payment_failed` to `/api/stripe/webhooks`
+- if Google Indexing API credentials are configured, live job pages automatically notify Google when they are published, closed, deleted, or expired
+- schedule `/api/cron/job-expirations` with `x-cron-secret: $CRON_SECRET` so expired listings are marked closed and sent to Google as removals
 
 ## Commands
 

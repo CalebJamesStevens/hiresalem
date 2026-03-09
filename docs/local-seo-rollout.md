@@ -5,6 +5,7 @@
 - Verify `https://hiresalem.com` in Google Search Console.
 - Verify `https://hiresalem.com` in Bing Webmaster Tools.
 - Submit `/sitemap.xml` after each major content release.
+- Configure the Google Indexing API for live `/jobs/[slug]` pages so new and removed job postings are pushed directly to Google.
 - Inspect representative URLs:
   - `/`
   - `/jobs`
@@ -37,3 +38,4 @@
   - resource articles
 - Watch for duplicate-title or duplicate-description warnings after launch.
 - Re-run rich results validation for live job pages after schema changes.
+- Monitor `/api/cron/job-expirations` so expired listings stop appearing as live URLs and are reported back to Google promptly.

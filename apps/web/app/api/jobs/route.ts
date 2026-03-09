@@ -7,6 +7,7 @@ import { getCompanyByOwnerAuthId } from "@/lib/companies"
 import { getSessionSafe } from "@/lib/session"
 import { requireApiRoles } from "@/lib/api-auth"
 import { db } from "@/lib/db"
+import { syncGoogleIndexingForJobTransition } from "@/lib/job-indexing"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { getRequestKey } from "@/lib/request"
 import { getStripe } from "@/lib/stripe"
@@ -179,6 +180,11 @@ export async function POST(req: Request) {
         expiresAt: new Date(now.getTime() + listingDurationDays * 24 * 60 * 60 * 1000)
       })
       .returning()
+
+    await syncGoogleIndexingForJobTransition({
+      before: null,
+      after: created
+    })
 
     return Response.json(created, { status: 201 })
   }
