@@ -42,6 +42,8 @@ export function JobForm({
       const payload = {
         title: String(formData.get("title") ?? ""),
         location: String(formData.get("location") ?? ""),
+        streetAddress: String(formData.get("streetAddress") ?? "") || undefined,
+        postalCode: String(formData.get("postalCode") ?? "") || undefined,
         salary: String(formData.get("salary") ?? ""),
         workMode: String(formData.get("workMode") ?? "") || undefined,
         employmentType: String(formData.get("employmentType") ?? "") || undefined,
@@ -95,6 +97,25 @@ export function JobForm({
           Location
         </label>
         <input id="location" name="location" disabled={disabled} className="w-full rounded border px-3 py-2" />
+        <p className="text-xs text-slate-500">Use city and state at minimum, like "Salem, OR".</p>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="space-y-1">
+          <label htmlFor="streetAddress" className="text-sm font-medium">
+            Street address
+          </label>
+          <input id="streetAddress" name="streetAddress" disabled={disabled} className="w-full rounded border px-3 py-2" />
+          <p className="text-xs text-slate-500">Optional, but recommended for Google Job Posting markup.</p>
+        </div>
+
+        <div className="space-y-1">
+          <label htmlFor="postalCode" className="text-sm font-medium">
+            Postal code
+          </label>
+          <input id="postalCode" name="postalCode" inputMode="numeric" disabled={disabled} className="w-full rounded border px-3 py-2" />
+          <p className="text-xs text-slate-500">Optional ZIP code for the job location.</p>
+        </div>
       </div>
 
       <div className="space-y-1">

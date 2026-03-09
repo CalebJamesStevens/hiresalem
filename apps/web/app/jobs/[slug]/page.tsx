@@ -85,7 +85,14 @@ export default async function JobPage({ params }: JobPageProps) {
   const signedInEmail = typeof session?.user?.email === "string" ? session.user.email : null
   const signInHref = `/signin?callbackUrl=${encodeURIComponent(`/jobs/${job.slug}`)}`
   const companyPath = job.companySlug ? buildCompanyJobsPath(job.companySlug) : null
-  const jobLocation = job.workMode === "remote" ? null : normalizeJobLocation(job.location)
+  const normalizedJobLocation = job.workMode === "remote" ? null : normalizeJobLocation(job.location)
+  const jobLocation = normalizedJobLocation
+    ? {
+        ...normalizedJobLocation,
+        streetAddress: job.streetAddress,
+        postalCode: job.postalCode
+      }
+    : null
   const workModeLabel =
     job.workMode === "remote" ? "Remote" : job.workMode === "hybrid" ? "Hybrid" : job.workMode === "onsite" ? "On-site" : null
   const breadcrumbs = [

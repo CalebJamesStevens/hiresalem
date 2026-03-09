@@ -14,6 +14,8 @@ type JobLocationInput = {
   city: string
   region: string
   country: string
+  streetAddress?: string | null
+  postalCode?: string | null
 }
 
 type JobPostingInput = {
@@ -273,8 +275,10 @@ export function buildJobPostingJsonLd(input: JobPostingInput) {
           "@type": "Place",
           address: {
             "@type": "PostalAddress",
+            streetAddress: input.jobLocation.streetAddress ?? undefined,
             addressLocality: input.jobLocation.city,
             addressRegion: input.jobLocation.region,
+            postalCode: input.jobLocation.postalCode ?? undefined,
             addressCountry: input.jobLocation.country
           }
         }

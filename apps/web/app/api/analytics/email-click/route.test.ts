@@ -12,6 +12,8 @@ describe("email click redirect", () => {
 
       expect(response.status).toBe(307)
       expect(response.headers.get("location")).toBe("https://hiresalem.com/jobs/test-role?_gc_event=email_digest_click")
+      expect(response.headers.get("x-robots-tag")).toBe("noindex, nofollow")
+      expect(response.headers.get("cache-control")).toBe("no-store")
     } finally {
       if (previousAppUrl === undefined) {
         delete process.env.NEXT_PUBLIC_APP_URL

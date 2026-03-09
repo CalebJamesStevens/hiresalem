@@ -51,12 +51,16 @@ describe("structured data helpers", () => {
       jobLocation: {
         city: "Salem",
         region: "OR",
-        country: "US"
+        country: "US",
+        streetAddress: "123 Liberty St NE",
+        postalCode: "97301"
       }
     })
 
     expect(jsonLd.employmentType).toBe("FULL_TIME")
     expect(jsonLd.url).toBe("https://hiresalem.com/jobs/front-desk-coordinator")
+    expect(jsonLd.jobLocation?.address.streetAddress).toBe("123 Liberty St NE")
+    expect(jsonLd.jobLocation?.address.postalCode).toBe("97301")
   })
 
   test("emits validThrough and uses external employer website for sameAs", () => {

@@ -44,6 +44,8 @@ type RawJob = {
   ownerAuthId?: unknown
   companyId?: unknown
   location?: unknown
+  streetAddress?: unknown
+  postalCode?: unknown
   salary?: unknown
   workMode?: unknown
   employmentType?: unknown
@@ -81,6 +83,8 @@ type NormalizedJob = {
   ownerAuthId: string
   companySlug: string | null
   location: string | null
+  streetAddress: string | null
+  postalCode: string | null
   salary: string | null
   workMode: WorkMode | null
   employmentType: EmploymentType | null
@@ -252,6 +256,8 @@ function normalizeJob(raw: RawJob): NormalizedJob {
     ownerAuthId: optionalString(raw.ownerAuthId) ?? "system",
     companySlug: optionalString(raw.companyId),
     location: optionalString(raw.location),
+    streetAddress: optionalString(raw.streetAddress),
+    postalCode: optionalString(raw.postalCode),
     salary: optionalString(raw.salary),
     workMode: optionalEnum(raw.workMode, `jobs[${slug}].workMode`, workModes),
     employmentType: optionalEnum(raw.employmentType, `jobs[${slug}].employmentType`, employmentTypes),
@@ -367,6 +373,8 @@ export async function importNormalizedJobs(raw: unknown, options: ImportNormaliz
           ownerAuthId,
           companyId: company?.id ?? null,
           location: job.location,
+          streetAddress: job.streetAddress,
+          postalCode: job.postalCode,
           salary: job.salary,
           workMode: job.workMode,
           employmentType: job.employmentType,

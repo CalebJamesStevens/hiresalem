@@ -29,6 +29,8 @@ export const jobs = pgTable("jobs", {
   ownerAuthId: text("owner_auth_id").notNull(),
   companyId: uuid("company_id").references(() => companies.id),
   location: text("location"),
+  streetAddress: text("street_address"),
+  postalCode: text("postal_code"),
   salary: text("salary"),
   workMode: workModeEnum("work_mode"),
   employmentType: employmentTypeEnum("employment_type"),

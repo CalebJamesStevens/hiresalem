@@ -12,5 +12,8 @@ export async function GET(request: Request) {
   const publicOrigin = process.env.NEXT_PUBLIC_APP_URL?.trim() || siteConfig.url
   const destination = new URL(target, publicOrigin)
   destination.searchParams.set("_gc_event", "email_digest_click")
-  return NextResponse.redirect(destination)
+  const response = NextResponse.redirect(destination)
+  response.headers.set("X-Robots-Tag", "noindex, nofollow")
+  response.headers.set("Cache-Control", "no-store")
+  return response
 }
