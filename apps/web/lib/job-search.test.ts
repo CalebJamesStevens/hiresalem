@@ -27,14 +27,14 @@ describe("parseJobsSearchParams", () => {
     const params = parseJobsSearchParams({
       workMode: "planet-side",
       category: "engineering",
-      minSalary: "85000",
+      minSalary: "85000.50",
       postedWithin: "7",
       page: "3"
     })
 
     expect(params.workMode).toBe("any")
     expect(params.category).toBe("engineering")
-    expect(params.minSalary).toBe(85000)
+    expect(params.minSalary).toBe(85000.5)
     expect(params.postedWithin).toBe("7")
     expect(params.page).toBe(3)
   })

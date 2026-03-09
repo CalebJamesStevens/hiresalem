@@ -57,6 +57,13 @@
       "when": 1772854553377,
       "tag": "0007_reflective_luminals",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1773024318680,
+      "tag": "0008_opposite_lilandra",
+      "breakpoints": true
     }
   ]
 }

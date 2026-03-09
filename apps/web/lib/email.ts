@@ -5,6 +5,10 @@ type SendEmailInput = {
   text: string
 }
 
+type SendEmailResult = {
+  id?: string
+}
+
 function getRequiredEnvValue(name: "RESEND_API_KEY" | "RESEND_FROM_EMAIL") {
   const value = process.env[name]
   if (!value) {
@@ -14,7 +18,7 @@ function getRequiredEnvValue(name: "RESEND_API_KEY" | "RESEND_FROM_EMAIL") {
   return value
 }
 
-export async function sendEmail({ to, subject, html, text }: SendEmailInput) {
+export async function sendEmail({ to, subject, html, text }: SendEmailInput): Promise<SendEmailResult> {
   const apiKey = getRequiredEnvValue("RESEND_API_KEY")
   const from = getRequiredEnvValue("RESEND_FROM_EMAIL")
 

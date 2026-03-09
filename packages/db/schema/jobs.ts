@@ -1,4 +1,4 @@
-import { boolean, integer, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core"
+import { boolean, doublePrecision, integer, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core"
 
 import { companies } from "./companies"
 
@@ -33,8 +33,8 @@ export const jobs = pgTable("jobs", {
   workMode: workModeEnum("work_mode"),
   employmentType: employmentTypeEnum("employment_type"),
   category: jobCategoryEnum("category"),
-  salaryMin: integer("salary_min"),
-  salaryMax: integer("salary_max"),
+  salaryMin: doublePrecision("salary_min"),
+  salaryMax: doublePrecision("salary_max"),
   salaryCurrency: text("salary_currency"),
   salaryInterval: salaryIntervalEnum("salary_interval"),
   description: text("description"),

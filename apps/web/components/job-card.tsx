@@ -25,7 +25,7 @@ function formatSalary(job: PublicJobSearchResult) {
     return job.salary
   }
 
-  if (!job.salaryMin && !job.salaryMax) {
+  if (job.salaryMin == null && job.salaryMax == null) {
     return null
   }
 
@@ -33,10 +33,10 @@ function formatSalary(job: PublicJobSearchResult) {
   const formatter = new Intl.NumberFormat("en-US", {
     style: "currency",
     currency,
-    maximumFractionDigits: 0
+    maximumFractionDigits: 2
   })
-  const lower = job.salaryMin ? formatter.format(job.salaryMin) : null
-  const upper = job.salaryMax ? formatter.format(job.salaryMax) : null
+  const lower = job.salaryMin != null ? formatter.format(job.salaryMin) : null
+  const upper = job.salaryMax != null ? formatter.format(job.salaryMax) : null
   const interval = job.salaryInterval ? ` / ${job.salaryInterval}` : ""
 
   if (lower && upper) {

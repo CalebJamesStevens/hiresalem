@@ -134,7 +134,7 @@ function normalizePage(value: string | undefined) {
 }
 
 function normalizeMinSalary(value: string | undefined) {
-  const amount = Number.parseInt(value ?? "", 10)
+  const amount = Number(value ?? "")
   return Number.isFinite(amount) && amount > 0 ? amount : null
 }
 

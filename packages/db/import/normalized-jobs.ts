@@ -150,13 +150,13 @@ function optionalUpperCurrency(value: unknown) {
   return trimmed ? trimmed.toUpperCase() : null
 }
 
-function optionalPositiveInt(value: unknown, field: string) {
+function optionalPositiveNumber(value: unknown, field: string) {
   if (value == null || value === "") {
     return null
   }
 
-  if (typeof value !== "number" || !Number.isInteger(value) || value <= 0) {
-    throw new Error(`${field} must be a positive integer`)
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+    throw new Error(`${field} must be a positive number`)
   }
 
   return value
@@ -232,8 +232,8 @@ function normalizeCompany(raw: RawCompany): NormalizedCompany {
 
 function normalizeJob(raw: RawJob): NormalizedJob {
   const slug = expectString(raw.slug, "jobs[].slug")
-  const salaryMin = optionalPositiveInt(raw.salaryMin, `jobs[${slug}].salaryMin`)
-  const salaryMax = optionalPositiveInt(raw.salaryMax, `jobs[${slug}].salaryMax`)
+  const salaryMin = optionalPositiveNumber(raw.salaryMin, `jobs[${slug}].salaryMin`)
+  const salaryMax = optionalPositiveNumber(raw.salaryMax, `jobs[${slug}].salaryMax`)
 
   if (salaryMin && salaryMax && salaryMin > salaryMax) {
     throw new Error(`jobs[${slug}].salaryMin cannot be greater than salaryMax`)

@@ -21,6 +21,14 @@ export type SavedSearchDigestRunSummary = {
   sentEmails: number
   deliveredSearches: number
   noMatchSearches: number
+  recipientSummaries: Array<{
+    recipientEmail: string
+    savedSearchCount: number
+    matchedSearchCount: number
+    matchedJobCount: number
+    sent: boolean
+    providerMessageId?: string
+  }>
 }
 
 function escapeHtml(value: string) {
@@ -122,6 +130,7 @@ function getLatestJobDate(jobs: PublicJobSearchResult[]) {
 export async function runSavedSearchDigests(referenceDate = new Date()): Promise<SavedSearchDigestRunSummary> {
   const readySearches = await listSavedSearchesReadyForDigest(referenceDate)
   const groupedRecipients = new Map<string, SavedSearch[]>()
+  const recipientSummaries: SavedSearchDigestRunSummary["recipientSummaries"] = []
 
   for (const savedSearch of readySearches) {
     const recipientEmail = savedSearch.recipientEmail?.trim().toLowerCase()
@@ -166,6 +175,13 @@ export async function runSavedSearchDigests(referenceDate = new Date()): Promise
 
     if (sections.length === 0) {
       noMatchSearches += savedSearches.length
+      recipientSummaries.push({
+        recipientEmail,
+        savedSearchCount: savedSearches.length,
+        matchedSearchCount: 0,
+        matchedJobCount: 0,
+        sent: false
+      })
       await markSavedSearchDigestsSent(updates)
       continue
     }
@@ -175,7 +191,7 @@ export async function runSavedSearchDigests(referenceDate = new Date()): Promise
       sections
     }
 
-    await sendEmail({
+    const emailResult = await sendEmail({
       to: recipientEmail,
       subject: buildDigestSubject(recipient),
       html: buildDigestHtml(recipient),
@@ -185,6 +201,14 @@ export async function runSavedSearchDigests(referenceDate = new Date()): Promise
     sentEmails += 1
     deliveredSearches += sections.length
     noMatchSearches += savedSearches.length - sections.length
+    recipientSummaries.push({
+      recipientEmail,
+      savedSearchCount: savedSearches.length,
+      matchedSearchCount: sections.length,
+      matchedJobCount: sections.reduce((total, section) => total + section.jobs.length, 0),
+      sent: true,
+      providerMessageId: emailResult.id
+    })
     await markSavedSearchDigestsSent(updates)
   }
 
@@ -193,6 +217,7 @@ export async function runSavedSearchDigests(referenceDate = new Date()): Promise
     recipientCount: groupedRecipients.size,
     sentEmails,
     deliveredSearches,
-    noMatchSearches
+    noMatchSearches,
+    recipientSummaries
   }
 }

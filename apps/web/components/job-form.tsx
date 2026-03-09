@@ -159,14 +159,14 @@ export function JobForm({
           <label htmlFor="salaryMin" className="text-sm font-medium">
             Salary min
           </label>
-          <input id="salaryMin" name="salaryMin" type="number" min="1" disabled={disabled} className="w-full rounded border px-3 py-2" />
+          <input id="salaryMin" name="salaryMin" type="number" min="1" step="0.01" disabled={disabled} className="w-full rounded border px-3 py-2" />
         </div>
 
         <div className="space-y-1">
           <label htmlFor="salaryMax" className="text-sm font-medium">
             Salary max
           </label>
-          <input id="salaryMax" name="salaryMax" type="number" min="1" disabled={disabled} className="w-full rounded border px-3 py-2" />
+          <input id="salaryMax" name="salaryMax" type="number" min="1" step="0.01" disabled={disabled} className="w-full rounded border px-3 py-2" />
         </div>
 
         <div className="space-y-1">

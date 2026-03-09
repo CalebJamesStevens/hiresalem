@@ -21,9 +21,9 @@ const optionalUrlSchema = z.preprocess((value) => {
   return trimmed ? trimmed : undefined
 }, z.string().url().optional())
 
-const optionalNumberSchema = z.preprocess((value) => {
+const optionalPositiveNumberSchema = z.preprocess((value) => {
   if (typeof value === "string" && value.trim()) {
-    return Number.parseInt(value.trim(), 10)
+    return Number(value.trim())
   }
 
   if (typeof value === "number") {
@@ -31,7 +31,7 @@ const optionalNumberSchema = z.preprocess((value) => {
   }
 
   return undefined
-}, z.number().int().positive().optional())
+}, z.number().finite().positive().optional())
 
 const listingDurationSchema = z.preprocess((value) => {
   if (typeof value === "string" && value.trim()) {
@@ -54,8 +54,8 @@ const createJobSchema = z
     workMode: z.enum(workModeEnum.enumValues).optional(),
     employmentType: z.enum(employmentTypeEnum.enumValues).optional(),
     category: z.enum(jobCategoryEnum.enumValues).optional(),
-    salaryMin: optionalNumberSchema,
-    salaryMax: optionalNumberSchema,
+    salaryMin: optionalPositiveNumberSchema,
+    salaryMax: optionalPositiveNumberSchema,
     salaryCurrency: z.string().trim().min(3).max(3).optional(),
     salaryInterval: z.enum(salaryIntervalEnum.enumValues).optional(),
     description: z.string().optional(),
