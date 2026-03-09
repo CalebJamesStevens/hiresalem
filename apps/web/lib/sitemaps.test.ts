@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test"
 
+import { EDITORIAL_CONTENT_LAST_MODIFIED } from "@/lib/seo-taxonomy"
 import {
   buildSitemapIndexXml,
   buildSitemapXml,
@@ -19,11 +20,20 @@ describe("sitemap helpers", () => {
   })
 
   test("keeps static sitemap entries on public indexable routes", () => {
-    const paths = getStaticSitemapEntries().map((entry) => entry.path)
+    const entries = getStaticSitemapEntries()
+    const paths = entries.map((entry) => entry.path)
 
     expect(paths).toContain("/")
     expect(paths).toContain("/jobs")
     expect(paths).toContain("/resources")
+    expect(entries.find((entry) => entry.path === "/resources")?.lastModified).toBe(EDITORIAL_CONTENT_LAST_MODIFIED)
+  })
+
+  test("marks editorial landing pages with a shared lastmod", () => {
+    const taxonomyEntries = getTaxonomySitemapEntries()
+
+    expect(taxonomyEntries.find((entry) => entry.path === "/jobs/salem")?.lastModified).toBe(EDITORIAL_CONTENT_LAST_MODIFIED)
+    expect(taxonomyEntries.find((entry) => entry.path === "/jobs/keizer")?.lastModified).toBe(EDITORIAL_CONTENT_LAST_MODIFIED)
   })
 
   test("builds xml documents for sitemap feeds and indexes", () => {

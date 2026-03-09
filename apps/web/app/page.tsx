@@ -4,7 +4,7 @@ import { JsonLd } from "@/components/json-ld"
 import { JobList } from "@/components/job-list"
 import { LinkCardGrid } from "@/components/link-card-grid"
 import { listLatestPublicJobs, listTopEmployers } from "@/lib/jobs"
-import { primaryLandingLinks, resourceArticles } from "@/lib/seo-taxonomy"
+import { allJobsLandingLinks, allResourceArticleLinks } from "@/lib/seo-taxonomy"
 import { buildPageMetadata } from "@/lib/seo"
 import { buildCompanyJobsPath } from "@/lib/site-paths"
 import { buildCollectionPageJsonLd } from "@/lib/structured-data"
@@ -21,11 +21,6 @@ export const metadata = buildPageMetadata({
 
 export default async function HomePage() {
   const [latestJobs, topEmployers] = await Promise.all([listLatestPublicJobs(6), listTopEmployers(6)])
-  const featuredResources = resourceArticles.slice(0, 3).map((article) => ({
-    href: article.path,
-    title: article.heroTitle,
-    description: article.seoDescription
-  }))
 
   return (
     <section className="space-y-10">
@@ -34,7 +29,7 @@ export default async function HomePage() {
           name: "HireSalem home",
           description: "Salem Oregon jobs, local category pages, and Salem-specific hiring guides.",
           path: "/",
-          items: primaryLandingLinks.map((item) => ({
+          items: allJobsLandingLinks.map((item) => ({
             name: item.title,
             path: item.href
           }))
@@ -86,7 +81,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <LinkCardGrid title="Popular Salem job searches" items={primaryLandingLinks} />
+      <LinkCardGrid title="Browse Salem city and category pages" items={allJobsLandingLinks} columns="md:grid-cols-2 xl:grid-cols-3" />
 
       <section className="space-y-4">
         <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
@@ -133,7 +128,7 @@ export default async function HomePage() {
         <JobList jobs={latestJobs} />
       </section>
 
-      <LinkCardGrid title="Local job seeker guides" items={featuredResources} />
+      <LinkCardGrid title="Local job seeker guides" items={allResourceArticleLinks} columns="md:grid-cols-2" />
     </section>
   )
 }

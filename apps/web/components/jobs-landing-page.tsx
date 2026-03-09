@@ -6,7 +6,6 @@ import { JsonLd } from "@/components/json-ld"
 import { JobList } from "@/components/job-list"
 import { LinkCardGrid } from "@/components/link-card-grid"
 import type { JobsLandingPage } from "@/lib/seo-taxonomy"
-import { buildJobsSearchPath } from "@/lib/job-search"
 import { buildBreadcrumbJsonLd, buildCollectionPageJsonLd, buildFaqJsonLd } from "@/lib/structured-data"
 import type { PublicJobSearchResponse } from "@/lib/jobs"
 
@@ -39,7 +38,7 @@ export function JobsLandingPageView({
     }))
   })
   const faqJsonLd = buildFaqJsonLd(page.faqs)
-  const browseAllHref = buildJobsSearchPath(page.searchParams)
+  const browseAllHref = "/jobs"
 
   return (
     <section className="space-y-8">
@@ -70,7 +69,7 @@ export function JobsLandingPageView({
             </ul>
             <div className="mt-5">
               <Link href={browseAllHref} className="inline-flex rounded-full bg-white px-4 py-2 text-sm font-medium text-slate-950">
-                Open the matching jobs search
+                Browse all Salem-area jobs
               </Link>
             </div>
           </div>
@@ -86,7 +85,7 @@ export function JobsLandingPageView({
             </p>
           </div>
           <Link href={browseAllHref} className="text-sm font-medium text-slate-700 underline underline-offset-4">
-            View this search in the main jobs index
+            Open the main jobs index
           </Link>
         </div>
 

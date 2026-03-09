@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 
-import { jobsLandingPages, resourceArticles } from "@/lib/seo-taxonomy"
+import { allJobsLandingLinks, allResourceArticleLinks, jobsLandingPages, resourceArticles } from "@/lib/seo-taxonomy"
 import { parseJobsSearchParams } from "@/lib/job-search"
 import { buildPageMetadata, getJobsPageCanonicalPath, getJobsPageRobots } from "@/lib/seo"
 import { buildJobPostingJsonLd, normalizeJobLocation } from "@/lib/structured-data"
@@ -153,5 +153,10 @@ describe("SEO content config", () => {
     const paths = [...jobsLandingPages.map((page) => page.path), ...resourceArticles.map((article) => article.path)]
 
     expect(new Set(paths).size).toBe(paths.length)
+  })
+
+  test("exposes HTML crawl hubs for every landing page and resource", () => {
+    expect(new Set(allJobsLandingLinks.map((item) => item.href))).toEqual(new Set(jobsLandingPages.map((page) => page.path)))
+    expect(new Set(allResourceArticleLinks.map((item) => item.href))).toEqual(new Set(resourceArticles.map((article) => article.path)))
   })
 })

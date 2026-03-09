@@ -5,7 +5,7 @@ import { JobList } from "@/components/job-list"
 import { JobsSearchForm } from "@/components/jobs-search-form"
 import { LinkCardGrid } from "@/components/link-card-grid"
 import { SaveSearchPanel } from "@/components/save-search-panel"
-import { primaryLandingLinks, resourceArticles } from "@/lib/seo-taxonomy"
+import { allJobsLandingLinks, allResourceArticleLinks } from "@/lib/seo-taxonomy"
 import { buildJobsSearchPath, getJobsSearchChips, hasActiveJobsSearchFilters, parseJobsSearchParams, type JobsSearchParams } from "@/lib/job-search"
 import { searchPublicJobs } from "@/lib/jobs"
 import {
@@ -62,11 +62,6 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
   const isNoMatch = searchResult.total === 0 && hasFilters
   const paginationPages = getPaginationPages(searchResult.page, totalPages)
   const isIndexablePage = isCleanJobsIndexPage(searchResult.appliedFilters)
-  const featuredGuides = resourceArticles.slice(0, 3).map((article) => ({
-    href: article.path,
-    title: article.heroTitle,
-    description: article.seoDescription
-  }))
 
   const resultSummary = searchResult.total === 1 ? "1 job found" : `${searchResult.total.toLocaleString()} jobs found`
 
@@ -170,8 +165,8 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
         <SaveSearchPanel currentPath={canonicalCurrentPath} />
       </div>
 
-      <LinkCardGrid title="Popular Salem job searches" items={primaryLandingLinks} />
-      <LinkCardGrid title="Local job seeker guides" items={featuredGuides} />
+      <LinkCardGrid title="Browse Salem city and category pages" items={allJobsLandingLinks} columns="md:grid-cols-2 xl:grid-cols-3" />
+      <LinkCardGrid title="Local job seeker guides" items={allResourceArticleLinks} columns="md:grid-cols-2" />
     </section>
   )
 }

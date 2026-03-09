@@ -40,6 +40,8 @@ export type ResourceArticle = {
   relatedLinks: LinkCard[]
 }
 
+export const EDITORIAL_CONTENT_LAST_MODIFIED = new Date("2026-03-08T00:00:00.000Z")
+
 function buildSearchParams(input: Partial<JobsSearchParams> & Record<string, string>) {
   return parseJobsSearchParams(input)
 }
@@ -1045,6 +1047,18 @@ export const primaryLandingLinks: LinkCard[] = [
     description: "A strong local search phrase for logistics and fulfillment work."
   }
 ]
+
+export const allJobsLandingLinks: LinkCard[] = jobsLandingPages.map((page) => ({
+  href: page.path,
+  title: page.heroTitle,
+  description: page.seoDescription
+}))
+
+export const allResourceArticleLinks: LinkCard[] = resourceArticles.map((article) => ({
+  href: article.path,
+  title: article.heroTitle,
+  description: article.seoDescription
+}))
 
 export const salemCategoryPages = jobsLandingPages.filter((page) => page.path.startsWith("/jobs/salem/"))
 

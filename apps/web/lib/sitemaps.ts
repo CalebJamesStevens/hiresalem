@@ -1,4 +1,4 @@
-import { jobsLandingPages, resourceArticles } from "@/lib/seo-taxonomy"
+import { EDITORIAL_CONTENT_LAST_MODIFIED, jobsLandingPages, resourceArticles } from "@/lib/seo-taxonomy"
 import { absoluteUrl } from "@/lib/seo"
 import { listCompaniesWithActiveJobsForSitemap, listPublicJobsForSitemap } from "@/lib/jobs"
 import { buildCompanyJobsPath } from "@/lib/site-paths"
@@ -16,18 +16,20 @@ const sitemapDocumentOptions = {
 
 export function getStaticSitemapEntries(): SitemapEntry[] {
   return [
-    { path: "/" },
-    { path: "/jobs" },
-    { path: "/resources" },
+    { path: "/", lastModified: EDITORIAL_CONTENT_LAST_MODIFIED },
+    { path: "/jobs", lastModified: EDITORIAL_CONTENT_LAST_MODIFIED },
+    { path: "/resources", lastModified: EDITORIAL_CONTENT_LAST_MODIFIED },
     ...resourceArticles.map((article) => ({
-      path: article.path
+      path: article.path,
+      lastModified: EDITORIAL_CONTENT_LAST_MODIFIED
     }))
   ]
 }
 
 export function getTaxonomySitemapEntries(): SitemapEntry[] {
   return jobsLandingPages.map((page) => ({
-    path: page.path
+    path: page.path,
+    lastModified: EDITORIAL_CONTENT_LAST_MODIFIED
   }))
 }
 

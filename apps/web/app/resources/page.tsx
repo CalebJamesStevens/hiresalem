@@ -1,6 +1,6 @@
 import { JsonLd } from "@/components/json-ld"
 import { LinkCardGrid } from "@/components/link-card-grid"
-import { resourceArticles } from "@/lib/seo-taxonomy"
+import { allResourceArticleLinks } from "@/lib/seo-taxonomy"
 import { buildPageMetadata } from "@/lib/seo"
 import { buildCollectionPageJsonLd } from "@/lib/structured-data"
 
@@ -13,12 +13,6 @@ export const metadata = buildPageMetadata({
 })
 
 export default function ResourcesPage() {
-  const items = resourceArticles.map((article) => ({
-    href: article.path,
-    title: article.heroTitle,
-    description: article.seoDescription
-  }))
-
   return (
     <section className="space-y-8">
       <JsonLd
@@ -26,7 +20,7 @@ export default function ResourcesPage() {
           name: "Salem job search resources",
           description: "Guides for Salem-area job seekers using HireSalem.",
           path: "/resources",
-          items: items.map((item) => ({
+          items: allResourceArticleLinks.map((item) => ({
             name: item.title,
             path: item.href
           }))
@@ -44,7 +38,7 @@ export default function ResourcesPage() {
         </div>
       </section>
 
-      <LinkCardGrid title="Browse the guides" items={items} />
+      <LinkCardGrid title="Browse the guides" items={allResourceArticleLinks} columns="md:grid-cols-2" />
     </section>
   )
 }
