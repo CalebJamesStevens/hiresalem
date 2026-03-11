@@ -10,7 +10,8 @@ import { MobileNav } from "@/components/mobile-nav"
 
 const publicNavItems = [
   { href: "/", label: "Home" },
-  { href: "/jobs", label: "Jobs" },
+  { href: "/jobs/salem", label: "Salem Jobs" },
+  { href: "/jobs", label: "All Jobs" },
   { href: "/resources", label: "Resources" }
 ]
 

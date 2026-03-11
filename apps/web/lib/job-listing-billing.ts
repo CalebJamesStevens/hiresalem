@@ -6,6 +6,9 @@ export const JOB_LISTING_PRICE_PER_DAY_CENTS = 500
 export const JOB_LISTING_MIN_DAYS = 1
 export const JOB_LISTING_MAX_DAYS = 90
 export const JOB_LISTING_DEFAULT_DAYS = 30
+export const JOB_UNAVAILABLE_RETENTION_DAYS = 21
+
+const DAY_IN_MS = 24 * 60 * 60 * 1000
 
 export type JobPaymentStatus = (typeof jobPaymentStatusEnum.enumValues)[number]
 
@@ -68,4 +71,26 @@ export function getJobStatusLabel(job: JobPublicationFields, now = new Date()) {
 
 export function getPublishedJobsFilter(now = new Date()) {
   return and(eq(jobs.isActive, true), eq(jobs.paymentStatus, "paid"), or(isNull(jobs.expiresAt), gt(jobs.expiresAt, now)))!
+}
+
+type HistoricalJobFields = JobPublicationFields & {
+  activatedAt?: Date | null
+  createdAt: Date
+}
+
+export function wasJobEverPublished(job: HistoricalJobFields) {
+  return Boolean(job.activatedAt) || job.paymentStatus === "expired"
+}
+
+export function getUnavailableJobRetentionEndsAt(job: HistoricalJobFields) {
+  const unavailableSince = job.expiresAt ?? job.activatedAt ?? job.createdAt
+  return new Date(unavailableSince.getTime() + JOB_UNAVAILABLE_RETENTION_DAYS * DAY_IN_MS)
+}
+
+export function canServeUnavailableJobPage(job: HistoricalJobFields, now = new Date()) {
+  if (!wasJobEverPublished(job)) {
+    return false
+  }
+
+  return getUnavailableJobRetentionEndsAt(job).getTime() > now.getTime()
 }

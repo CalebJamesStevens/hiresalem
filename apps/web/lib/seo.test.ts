@@ -1,9 +1,18 @@
 import { describe, expect, test } from "bun:test"
 
+import { canServeUnavailableJobPage, getUnavailableJobRetentionEndsAt, JOB_UNAVAILABLE_RETENTION_DAYS } from "@/lib/job-listing-billing"
 import { allJobsLandingLinks, allResourceArticleLinks, jobsLandingPages, resourceArticles } from "@/lib/seo-taxonomy"
 import { parseJobsSearchParams } from "@/lib/job-search"
-import { buildPageMetadata, getJobsPageCanonicalPath, getJobsPageRobots } from "@/lib/seo"
-import { buildJobPostingJsonLd, normalizeJobLocation } from "@/lib/structured-data"
+import {
+  buildPageMetadata,
+  getCanonicalRedirectUrl,
+  getJobsPageCanonicalPath,
+  getJobsPageDescription,
+  getJobsPageRobots,
+  getJobsPageTitle,
+  normalizePublicOrigin
+} from "@/lib/seo"
+import { buildFaqJsonLd, buildJobPostingJsonLd, normalizeJobLocation } from "@/lib/structured-data"
 
 describe("jobs index SEO rules", () => {
   test("keeps the clean jobs page indexable", () => {
@@ -11,6 +20,7 @@ describe("jobs index SEO rules", () => {
 
     expect(getJobsPageCanonicalPath(params)).toBe("/jobs")
     expect(getJobsPageRobots(params)).toBeUndefined()
+    expect(getJobsPageTitle(params)).toBe("All HireSalem Jobs")
   })
 
   test("noindexes filtered jobs pages and points canonicals at the main index", () => {
@@ -24,6 +34,14 @@ describe("jobs index SEO rules", () => {
       index: false,
       follow: true
     })
+    expect(getJobsPageDescription(params)).toContain("Filtered job results")
+  })
+
+  test("keeps the Salem landing page and jobs index differentiated", () => {
+    const params = parseJobsSearchParams({})
+
+    expect(getJobsPageTitle(params)).toBe("All HireSalem Jobs")
+    expect(getJobsPageDescription(params)).toContain("full searchable HireSalem index")
   })
 })
 
@@ -36,6 +54,34 @@ describe("page metadata", () => {
     })
 
     expect(metadata.alternates?.canonical).toBe("https://hiresalem.com/jobs/salem")
+  })
+
+  test("normalizes public origins to the apex host", () => {
+    expect(normalizePublicOrigin("https://www.hiresalem.com")).toBe("https://hiresalem.com")
+    expect(normalizePublicOrigin("https://hiresalem.com")).toBe("https://hiresalem.com")
+    expect(normalizePublicOrigin("http://localhost:3000")).toBe("http://localhost:3000")
+  })
+
+  test("builds fallback host redirects toward the apex host", () => {
+    expect(
+      getCanonicalRedirectUrl({
+        url: "https://www.hiresalem.com/jobs/salem?ref=1"
+      })
+    ).toBe("https://hiresalem.com/jobs/salem?ref=1")
+
+    expect(
+      getCanonicalRedirectUrl({
+        url: "http://hiresalem.com/jobs/salem",
+        forwardedProto: "http"
+      })
+    ).toBe("https://hiresalem.com/jobs/salem")
+
+    expect(
+      getCanonicalRedirectUrl({
+        url: "http://localhost:3000/jobs/salem",
+        forwardedProto: "http"
+      })
+    ).toBeNull()
   })
 })
 
@@ -146,6 +192,10 @@ describe("structured data helpers", () => {
       country: "US"
     })
   })
+
+  test("omits FAQ schema when no FAQ content is visible", () => {
+    expect(buildFaqJsonLd([])).toBeNull()
+  })
 })
 
 describe("SEO content config", () => {
@@ -158,5 +208,22 @@ describe("SEO content config", () => {
   test("exposes HTML crawl hubs for every landing page and resource", () => {
     expect(new Set(allJobsLandingLinks.map((item) => item.href))).toEqual(new Set(jobsLandingPages.map((page) => page.path)))
     expect(new Set(allResourceArticleLinks.map((item) => item.href))).toEqual(new Set(resourceArticles.map((article) => article.path)))
+  })
+})
+
+describe("expired public job retention", () => {
+  test("keeps unavailable pages live for a short noindex window", () => {
+    const job = {
+      isActive: false,
+      paymentStatus: "expired" as const,
+      expiresAt: new Date("2026-03-08T12:00:00.000Z"),
+      activatedAt: new Date("2026-03-01T12:00:00.000Z"),
+      createdAt: new Date("2026-03-01T12:00:00.000Z")
+    }
+
+    expect(getUnavailableJobRetentionEndsAt(job)).toEqual(new Date("2026-03-29T12:00:00.000Z"))
+    expect(canServeUnavailableJobPage(job, new Date("2026-03-20T12:00:00.000Z"))).toBe(true)
+    expect(canServeUnavailableJobPage(job, new Date("2026-03-30T12:00:00.000Z"))).toBe(false)
+    expect(JOB_UNAVAILABLE_RETENTION_DAYS).toBe(21)
   })
 })

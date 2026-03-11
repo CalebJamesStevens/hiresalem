@@ -42,6 +42,8 @@ describe("sitemap helpers", () => {
 
     expect(sitemapXml).toContain("https://hiresalem.com/jobs/salem")
     expect(sitemapIndexXml).toContain("https://hiresalem.com/sitemap-jobs.xml")
+    expect(sitemapXml).not.toContain("www.hiresalem.com")
+    expect(sitemapIndexXml).not.toContain("www.hiresalem.com")
   })
 
   test("prefers activatedAt for job sitemap freshness", () => {

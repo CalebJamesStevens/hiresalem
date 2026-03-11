@@ -5,22 +5,45 @@ import { FaqSection } from "@/components/faq-section"
 import { JsonLd } from "@/components/json-ld"
 import { JobList } from "@/components/job-list"
 import { LinkCardGrid } from "@/components/link-card-grid"
-import type { JobsLandingPage } from "@/lib/seo-taxonomy"
+import type { TopEmployer, PublicJobSearchResponse } from "@/lib/jobs"
+import type { LinkCard, JobsLandingPage } from "@/lib/seo-taxonomy"
+import { buildCompanyJobsPath } from "@/lib/site-paths"
 import { buildBreadcrumbJsonLd, buildCollectionPageJsonLd, buildFaqJsonLd } from "@/lib/structured-data"
-import type { PublicJobSearchResponse } from "@/lib/jobs"
+
+function formatLatestJobDate(searchResult: PublicJobSearchResponse) {
+  const latestJob = searchResult.results[0]
+  if (!latestJob) {
+    return null
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric"
+  }).format(latestJob.activatedAt ?? latestJob.createdAt)
+}
 
 export function JobsLandingPageView({
   page,
-  searchResult
+  searchResult,
+  featuredLinks = [],
+  featuredLinksTitle = "Keep exploring local pages",
+  featuredEmployers = [],
+  resourceLinks = []
 }: {
   page: JobsLandingPage
   searchResult: PublicJobSearchResponse
+  featuredLinks?: LinkCard[]
+  featuredLinksTitle?: string
+  featuredEmployers?: TopEmployer[]
+  resourceLinks?: LinkCard[]
 }) {
   const breadcrumbs = [
     { name: "Home", href: "/" },
     { name: "Jobs", href: "/jobs" },
     { name: page.seoTitle, href: page.path }
   ]
+  const latestJobDate = formatLatestJobDate(searchResult)
 
   const breadcrumbJsonLd = buildBreadcrumbJsonLd(
     breadcrumbs.map((item) => ({
@@ -62,6 +85,10 @@ export function JobsLandingPageView({
           </div>
           <div className="rounded-[1.75rem] bg-slate-950 p-5 text-slate-50">
             <h2 className="text-lg font-semibold">Why this page helps</h2>
+            <div className="mt-4 rounded-2xl bg-white/10 px-4 py-3 text-sm text-slate-100">
+              <p>{searchResult.total === 1 ? "1 live job matches this page." : `${searchResult.total.toLocaleString()} live jobs match this page.`}</p>
+              {latestJobDate ? <p className="mt-1 text-slate-300">Latest listing posted {latestJobDate}.</p> : null}
+            </div>
             <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-200">
               {page.highlights.map((item) => (
                 <li key={item}>{item}</li>
@@ -75,6 +102,8 @@ export function JobsLandingPageView({
           </div>
         </div>
       </div>
+
+      {featuredLinks.length > 0 ? <LinkCardGrid title={featuredLinksTitle} items={featuredLinks} columns="md:grid-cols-2 xl:grid-cols-3" /> : null}
 
       <section className="space-y-4">
         <div className="flex items-end justify-between gap-3">
@@ -101,8 +130,43 @@ export function JobsLandingPageView({
         )}
       </section>
 
-      <FaqSection title="Questions Salem job seekers ask" items={page.faqs} />
+      {featuredEmployers.length > 0 ? (
+        <section className="space-y-4">
+          <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h2 className="text-2xl font-semibold text-slate-950">Explore local employers</h2>
+              <p className="mt-1 text-sm text-slate-600">Compare Salem-area employers that currently have live openings on HireSalem.</p>
+            </div>
+            <Link href="/jobs" className="text-sm font-medium text-slate-700 underline underline-offset-4">
+              Open the full listings index
+            </Link>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {featuredEmployers.map((company) => (
+              <Link
+                key={company.id}
+                href={buildCompanyJobsPath(company.slug)}
+                className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+              >
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold text-slate-900">{company.name}</h3>
+                  <p className="text-sm text-slate-600">
+                    {company.activeJobCount} active {company.activeJobCount === 1 ? "job" : "jobs"}
+                  </p>
+                  <p className="text-sm leading-6 text-slate-600">
+                    Browse current openings from this employer and compare them with related Salem hiring paths.
+                  </p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {page.faqs.length > 0 ? <FaqSection title="Questions local job seekers ask" items={page.faqs} /> : null}
       <LinkCardGrid title="Keep exploring local pages" items={page.relatedLinks} />
+      {resourceLinks.length > 0 ? <LinkCardGrid title="Read Salem job search guides" items={resourceLinks} columns="md:grid-cols-3" /> : null}
     </section>
   )
 }

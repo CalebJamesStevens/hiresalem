@@ -50,19 +50,19 @@ export const jobsLandingPages: JobsLandingPage[] = [
   {
     slug: "salem",
     path: "/jobs/salem",
-    seoTitle: "Salem Oregon Jobs",
+    seoTitle: "Jobs in Salem, Oregon",
     seoDescription:
-      "Find jobs in Salem, Oregon across healthcare, construction, warehouse, retail, government, and local employers hiring now.",
-    heroTitle: "Find jobs in Salem, Oregon",
-    eyebrow: "Salem Oregon jobs",
+      "Find jobs in Salem, Oregon from local employers, explore category pages, and compare fresh openings across the Salem-area market.",
+    heroTitle: "Jobs in Salem, Oregon",
+    eyebrow: "Local Salem jobs",
     intro: [
-      "HireSalem is built to rank for and serve Salem Oregon jobs, not generic national search terms. This page is the main local index for people searching jobs in Salem Oregon, hiring in Salem Oregon, and Salem Oregon employment.",
-      "Use this page as the broad Salem market view, then narrow into category pages like restaurant jobs, construction jobs, warehouse jobs, healthcare jobs, or government jobs in Salem."
+      "Start here when you want the broad local market. This page pulls together Salem job listings, local employers, and category drill-downs so you can understand what is hiring now without jumping into a generic national feed.",
+      "Once you have the big picture, narrow into Salem category pages like healthcare, restaurant, warehouse, construction, retail, or government jobs to focus on the parts of the market that fit you best."
     ],
     highlights: [
-      "Broad Salem-local coverage across the city and nearby commute zones.",
-      "Built for Salem Oregon search intent instead of a national jobs feed.",
-      "The best starting point before drilling into local job categories."
+      "Broad Salem-first coverage across local employers and nearby commute zones.",
+      "Useful as the main starting point before drilling into category pages.",
+      "Built to connect fresh jobs, employer pages, and Salem-specific search paths."
     ],
     faqs: [
       {
@@ -1061,6 +1061,87 @@ export const allResourceArticleLinks: LinkCard[] = resourceArticles.map((article
 }))
 
 export const salemCategoryPages = jobsLandingPages.filter((page) => page.path.startsWith("/jobs/salem/"))
+
+const categoryHubPathMap: Record<string, string> = {
+  healthcare: "/jobs/salem/healthcare",
+  education: "/jobs/salem/education",
+  skilled_trades: "/jobs/salem/skilled-trades",
+  hospitality: "/jobs/salem/hospitality"
+}
+
+function getLinkCardByPath(path: string) {
+  if (path === "/jobs") {
+    return {
+      href: "/jobs",
+      title: "All current HireSalem jobs",
+      description: "Browse the full jobs index when you want every current listing in one place."
+    }
+  }
+
+  return allJobsLandingLinks.find((item) => item.href === path) ?? primaryLandingLinks.find((item) => item.href === path) ?? null
+}
+
+export function getJobHubLinksForContext(input: {
+  categories?: Array<string | null | undefined>
+  locations?: Array<string | null | undefined>
+  includeSalemHub?: boolean
+  includeJobsIndex?: boolean
+  limit?: number
+}) {
+  const seen = new Set<string>()
+  const items: LinkCard[] = []
+  const limit = input.limit ?? 4
+
+  const pushPath = (path: string) => {
+    if (seen.has(path) || items.length >= limit) {
+      return
+    }
+
+    const link = getLinkCardByPath(path)
+    if (!link) {
+      return
+    }
+
+    seen.add(path)
+    items.push(link)
+  }
+
+  if (input.includeSalemHub !== false) {
+    pushPath("/jobs/salem")
+  }
+
+  for (const location of input.locations ?? []) {
+    const normalized = location?.toLowerCase() ?? ""
+    if (!normalized) {
+      continue
+    }
+
+    if (normalized.includes("keizer")) {
+      pushPath("/jobs/keizer")
+    }
+
+    if (normalized.includes("salem")) {
+      pushPath("/jobs/salem")
+    }
+  }
+
+  for (const category of input.categories ?? []) {
+    if (!category) {
+      continue
+    }
+
+    const path = categoryHubPathMap[category]
+    if (path) {
+      pushPath(path)
+    }
+  }
+
+  if (input.includeJobsIndex) {
+    pushPath("/jobs")
+  }
+
+  return items
+}
 
 export function getJobsLandingPageBySlug(slug: string) {
   return jobsLandingPages.find((page) => page.slug === slug) ?? null

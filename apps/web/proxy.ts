@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 
 import { auth } from "@/auth"
 import { hasAnyRole, normalizeRoles } from "@/lib/authz"
+import { getCanonicalRedirectUrl } from "@/lib/seo"
 
 function signInRedirect(req: Request) {
   const url = new URL(req.url)
@@ -12,6 +13,15 @@ function signInRedirect(req: Request) {
 }
 
 export default auth((req: any) => {
+  const canonicalRedirectUrl = getCanonicalRedirectUrl({
+    url: req.url,
+    forwardedProto: req.headers.get("x-forwarded-proto")
+  })
+
+  if (canonicalRedirectUrl) {
+    return NextResponse.redirect(canonicalRedirectUrl, 308)
+  }
+
   const pathname = req.nextUrl.pathname
   const userId = req.auth?.user?.id
   const roles = normalizeRoles(req.auth?.user?.roles)
@@ -70,5 +80,5 @@ export default auth((req: any) => {
 })
 
 export const config = {
-  matcher: ["/post-job", "/dashboard/:path*", "/admin/:path*"]
+  matcher: ["/((?!_next/static|_next/image|_next/webpack-hmr).*)"]
 }

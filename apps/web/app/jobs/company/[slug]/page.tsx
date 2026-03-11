@@ -4,20 +4,37 @@ import { notFound } from "next/navigation"
 import { Breadcrumbs } from "@/components/breadcrumbs"
 import { JsonLd } from "@/components/json-ld"
 import { getCompanyBySlug } from "@/lib/companies"
+import { categoryOptions } from "@/lib/job-search"
 import { listActiveJobsForCompany } from "@/lib/jobs"
 import { buildPageMetadata, snippet } from "@/lib/seo"
+import { getJobHubLinksForContext } from "@/lib/seo-taxonomy"
 import { buildCompanyJobsPath } from "@/lib/site-paths"
 import {
   buildBreadcrumbJsonLd,
   buildCollectionPageJsonLd,
-  buildCompanyOrganizationJsonLd,
-  buildOrganizationJsonLd
+  buildCompanyOrganizationJsonLd
 } from "@/lib/structured-data"
 
 type CompanyPageProps = {
   params: Promise<{
     slug: string
   }>
+}
+
+function formatList(values: string[]) {
+  if (values.length === 0) {
+    return ""
+  }
+
+  if (values.length === 1) {
+    return values[0]!
+  }
+
+  if (values.length === 2) {
+    return `${values[0]} and ${values[1]}`
+  }
+
+  return `${values.slice(0, -1).join(", ")}, and ${values.at(-1)}`
 }
 
 export async function generateMetadata({ params }: CompanyPageProps) {
@@ -37,9 +54,18 @@ export async function generateMetadata({ params }: CompanyPageProps) {
   }
 
   const companyJobs = await listActiveJobsForCompany(company.id)
+  const categories = Array.from(
+    new Set(
+      companyJobs
+        .map((job) => categoryOptions.find((option) => option.value === job.category)?.label)
+        .filter((value): value is Exclude<typeof value, undefined> => value !== undefined)
+    )
+  ).slice(0, 3)
   const description = snippet(
     companyJobs.length > 0
-      ? `${company.name} is hiring in Salem, Oregon. Browse active local openings, employer details, and live jobs on HireSalem.`
+      ? `${company.name} has ${companyJobs.length} active ${companyJobs.length === 1 ? "job" : "jobs"} on HireSalem${
+          categories.length > 0 ? ` across ${formatList(categories)}` : ""
+        }. Browse live local openings and employer-specific hiring updates in Salem, Oregon.`
       : `${company.name} is listed on HireSalem. Check back for new Salem-area openings from this employer.`,
     `${company.name} jobs on HireSalem.`,
     155
@@ -70,9 +96,21 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
 
   const companyJobs = await listActiveJobsForCompany(company.id)
   const companyPath = buildCompanyJobsPath(company.slug)
+  const categories = Array.from(
+    new Set(
+      companyJobs
+        .map((job) => categoryOptions.find((option) => option.value === job.category)?.label)
+        .filter((value): value is Exclude<typeof value, undefined> => value !== undefined)
+    )
+  )
+  const hubLinks = getJobHubLinksForContext({
+    categories: companyJobs.map((job) => job.category),
+    locations: companyJobs.map((job) => job.location),
+    includeJobsIndex: true
+  })
   const breadcrumbs = [
     { name: "Home", href: "/" },
-    { name: "Jobs", href: "/jobs" },
+    { name: "Salem jobs", href: "/jobs/salem" },
     { name: company.name, href: companyPath }
   ]
 
@@ -88,7 +126,6 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
       />
       <JsonLd
         data={[
-          buildOrganizationJsonLd(),
           buildCompanyOrganizationJsonLd({
             name: company.name,
             path: companyPath,
@@ -111,9 +148,15 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
         <div className="space-y-2">
           <h1 className="text-3xl font-bold tracking-tight text-slate-950 md:text-4xl">{company.name}</h1>
           <p className="max-w-3xl text-base leading-7 text-slate-700">
-            Browse active openings from {company.name} on HireSalem. Company pages stay focused on live jobs so the page remains useful for
-            Salem-area job seekers and for company-specific searches like "{company.name} jobs".
+            {company.name} currently has {companyJobs.length} active {companyJobs.length === 1 ? "job" : "jobs"} on HireSalem. Use this page to
+            browse the employer&apos;s live openings, then compare them with broader Salem hiring paths.
           </p>
+          {categories.length > 0 ? (
+            <p className="max-w-3xl text-sm leading-7 text-slate-600">
+              Current openings on this page span {formatList(categories.slice(0, 4))}, which makes this a useful employer hub for Salem-area
+              candidates comparing role families as well as a specific company.
+            </p>
+          ) : null}
           {company.website ? (
             <p className="text-slate-600">
               <Link href={company.website} className="underline underline-offset-4" target="_blank" rel="noreferrer">
@@ -159,6 +202,31 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
           ))}
         </div>
       </section>
+
+      {hubLinks.length > 0 ? (
+        <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="space-y-2">
+            <h2 className="text-2xl font-semibold text-slate-950">Keep exploring Salem hiring</h2>
+            <p className="text-sm leading-6 text-slate-600">
+              Compare {company.name} with broader Salem job hubs, category pages, and the full HireSalem jobs index.
+            </p>
+          </div>
+          <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {hubLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5 transition hover:-translate-y-0.5 hover:shadow-sm"
+              >
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold text-slate-900">{link.title}</h3>
+                  <p className="text-sm leading-6 text-slate-600">{link.description}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
     </section>
   )
 }

@@ -8,10 +8,17 @@ import { MarkdownContent } from "@/components/markdown-content"
 import { ApplicationForm } from "@/components/application-form"
 import { TrackedApplyLink } from "@/components/tracked-apply-link"
 import { hasAnyRole, hasRole, normalizeRoles } from "@/lib/authz"
-import { getJobStatusLabel, isJobPublished } from "@/lib/job-listing-billing"
-import { getJobBySlug, listRelatedJobsForJob } from "@/lib/jobs"
+import {
+  canServeUnavailableJobPage,
+  getJobStatusLabel,
+  getUnavailableJobRetentionEndsAt,
+  isJobPublished
+} from "@/lib/job-listing-billing"
+import { categoryOptions, employmentTypeOptions } from "@/lib/job-search"
+import { getJobBySlug, listRelatedJobsForJob, type PublicJobDetail } from "@/lib/jobs"
 import { markdownToPlainText } from "@/lib/markdown"
 import { buildPageMetadata, snippet } from "@/lib/seo"
+import { getJobHubLinksForContext } from "@/lib/seo-taxonomy"
 import { buildCompanyJobsPath } from "@/lib/site-paths"
 import { getSessionSafe } from "@/lib/session"
 import { buildBreadcrumbJsonLd, buildJobPostingJsonLd, normalizeJobLocation } from "@/lib/structured-data"
@@ -20,6 +27,39 @@ type JobPageProps = {
   params: Promise<{
     slug: string
   }>
+}
+
+function formatCompensation(job: PublicJobDetail) {
+  if (job.salary) {
+    return job.salary
+  }
+
+  if (job.salaryMin == null && job.salaryMax == null) {
+    return null
+  }
+
+  const formatter = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: job.salaryCurrency ?? "USD",
+    maximumFractionDigits: 2
+  })
+  const lower = job.salaryMin != null ? formatter.format(job.salaryMin) : null
+  const upper = job.salaryMax != null ? formatter.format(job.salaryMax) : null
+  const interval = job.salaryInterval ? ` / ${job.salaryInterval}` : ""
+
+  if (lower && upper) {
+    return `${lower} - ${upper}${interval}`
+  }
+
+  return `${lower ?? upper}${interval}`
+}
+
+function formatCalendarDate(value: Date) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric"
+  }).format(value)
 }
 
 export async function generateMetadata({ params }: JobPageProps) {
@@ -38,23 +78,32 @@ export async function generateMetadata({ params }: JobPageProps) {
     })
   }
 
+  const canServeUnavailable = canServeUnavailableJobPage(job)
   const title = `${job.title} job in ${job.location ?? "Salem Oregon"}`
-  const description = snippet(
-    job.description,
-    `${job.title} at ${job.companyName ?? "a Salem-area employer"} in ${job.location ?? "Salem Oregon"}.`,
-    155
-  )
+  const unavailableTitle = `${job.title} job in ${job.location ?? "Salem Oregon"} no longer available`
+  const description = isJobPublished(job)
+    ? snippet(job.description, `${job.title} at ${job.companyName ?? "a Salem-area employer"} in ${job.location ?? "Salem Oregon"}.`, 155)
+    : snippet(
+        `${job.title} at ${job.companyName ?? "a Salem-area employer"} is no longer available. Browse current Salem-area jobs, employer pages, and related local openings on HireSalem.`,
+        unavailableTitle,
+        155
+      )
 
   return buildPageMetadata({
-    title,
+    title: isJobPublished(job) ? title : unavailableTitle,
     description,
     path: `/jobs/${job.slug}`,
     robots: isJobPublished(job)
       ? undefined
-      : {
-          index: false,
-          follow: false
-        },
+      : canServeUnavailable
+        ? {
+            index: false,
+            follow: true
+          }
+        : {
+            index: false,
+            follow: false
+          },
     keywords: [job.title, `${job.location ?? "Salem Oregon"} job`, job.companyName ?? "Salem employer", "Salem Oregon jobs"]
   })
 }
@@ -73,9 +122,12 @@ export default async function JobPage({ params }: JobPageProps) {
   }
 
   const isPublished = isJobPublished(job)
+  const canServeUnavailable = canServeUnavailableJobPage(job)
   const statusLabel = getJobStatusLabel(job)
   const canViewInactive = Boolean(userId && (isAdmin || job.ownerAuthId === userId))
-  if (!isPublished && !canViewInactive) {
+  const isPublicUnavailable = !isPublished && !canViewInactive
+
+  if (isPublicUnavailable && !canServeUnavailable) {
     notFound()
   }
 
@@ -95,22 +147,39 @@ export default async function JobPage({ params }: JobPageProps) {
     : null
   const workModeLabel =
     job.workMode === "remote" ? "Remote" : job.workMode === "hybrid" ? "Hybrid" : job.workMode === "onsite" ? "On-site" : null
+  const employmentTypeLabel = job.employmentType
+    ? employmentTypeOptions.find((option) => option.value === job.employmentType)?.label ?? job.employmentType
+    : null
+  const categoryLabel = job.category ? categoryOptions.find((option) => option.value === job.category)?.label ?? job.category : null
+  const compensation = formatCompensation(job)
+  const postedAt = job.activatedAt ?? job.createdAt
+  const removalDate = getUnavailableJobRetentionEndsAt(job)
+  const hubLinks = getJobHubLinksForContext({
+    categories: [job.category],
+    locations: [job.location],
+    includeJobsIndex: true
+  })
   const breadcrumbs = [
     { name: "Home", href: "/" },
-    { name: "Jobs", href: "/jobs" },
+    { name: "Salem jobs", href: "/jobs/salem" },
+    ...(companyPath && job.companyName ? [{ name: job.companyName, href: companyPath }] : []),
     { name: job.title, href: `/jobs/${job.slug}` }
   ]
-  const localContext = `${job.companyName ?? "This Salem-area employer"} is hiring${job.location ? ` in ${job.location}` : " in Salem Oregon"}. Use this page for the role details, then compare it with broader Salem Oregon jobs pages if you want nearby alternatives.`
+  const localContext = isPublicUnavailable
+    ? `${job.companyName ?? "This Salem-area employer"} is no longer accepting applications for this role. Use the links below to move into current Salem-area jobs, related employer pages, and nearby alternatives.`
+    : `${job.companyName ?? "This Salem-area employer"} is hiring${job.location ? ` in ${job.location}` : " in Salem Oregon"}. Use this page for the role details, then compare it with broader Salem jobs pages if you want nearby alternatives.`
   const mobileApplyButtonClassName =
     "inline-flex w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-3 text-sm font-medium text-white"
   const mobileApplyCta =
-    job.applyType === "external" && isPublished && job.applyUrl
-      ? {
-          kind: "external" as const,
-          href: job.applyUrl,
-          label: "Apply on company site"
-        }
-      : canApplyInApp
+    isPublicUnavailable
+      ? null
+      : job.applyType === "external" && isPublished && job.applyUrl
+        ? {
+            kind: "external" as const,
+            href: job.applyUrl,
+            label: "Apply on company site"
+          }
+        : canApplyInApp
         ? {
             kind: "anchor" as const,
             href: "#application-form",
@@ -123,6 +192,15 @@ export default async function JobPage({ params }: JobPageProps) {
               label: "Sign in to apply"
             }
           : null
+  const jobSnapshot = [
+    { label: "Location", value: job.location ?? "Salem, OR" },
+    { label: "Employer", value: job.companyName ?? "Local employer" },
+    employmentTypeLabel ? { label: "Schedule", value: employmentTypeLabel } : null,
+    workModeLabel ? { label: "Work mode", value: workModeLabel } : null,
+    categoryLabel ? { label: "Category", value: categoryLabel } : null,
+    compensation ? { label: "Pay", value: compensation } : null,
+    { label: "Posted", value: formatCalendarDate(postedAt) }
+  ].filter((item): item is { label: string; value: string } => item !== null)
 
   return (
     <article className={mobileApplyCta ? "min-w-0 space-y-8 pb-32 lg:pb-0" : "min-w-0 space-y-8"}>
@@ -191,6 +269,16 @@ export default async function JobPage({ params }: JobPageProps) {
               This role is currently {statusLabel.toLowerCase()}.
             </p>
           ) : null}
+          {isPublicUnavailable ? (
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm leading-6 text-slate-700">
+              <p className="font-medium text-slate-900">This job is no longer accepting applications.</p>
+              <p className="mt-1">
+                HireSalem keeps unavailable job pages live for a short period so job seekers can move into current openings, employer pages, and
+                related Salem hiring paths.
+              </p>
+              <p className="mt-1 text-slate-600">This page is set to be removed after {formatCalendarDate(removalDate)}.</p>
+            </div>
+          ) : null}
         </div>
       </section>
 
@@ -199,6 +287,7 @@ export default async function JobPage({ params }: JobPageProps) {
           <section className="min-w-0 overflow-hidden rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
             <div className="min-w-0 space-y-3">
               <h2 className="text-xl font-semibold text-slate-900">About the role</h2>
+              {isPublicUnavailable ? <p className="text-sm text-slate-500">The details below reflect the original listing for this role.</p> : null}
               <MarkdownContent value={job.description} fallback="No description provided yet." />
             </div>
           </section>
@@ -207,17 +296,19 @@ export default async function JobPage({ params }: JobPageProps) {
             <div className="min-w-0 space-y-3">
               <h2 className="text-xl font-semibold text-slate-900">Salem Oregon context</h2>
               <p className="text-sm leading-7 text-slate-700">{localContext}</p>
-              <p className="text-sm leading-7 text-slate-700">
-                Want a wider look at the market? Compare this role with the broader{" "}
-                <Link href="/jobs/salem" className="font-medium underline underline-offset-4">
-                  Salem Oregon jobs
-                </Link>{" "}
-                page or explore{" "}
-                <Link href="/jobs/keizer" className="font-medium underline underline-offset-4">
-                  nearby Keizer jobs
-                </Link>
-                .
-              </p>
+              {hubLinks.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {hubLinks.map((link) => (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700"
+                    >
+                      {link.title}
+                    </Link>
+                  ))}
+                </div>
+              ) : null}
             </div>
           </section>
 
@@ -242,6 +333,18 @@ export default async function JobPage({ params }: JobPageProps) {
         </div>
 
         <div className="min-w-0 space-y-4">
+          <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="text-xl font-semibold text-slate-900">Job snapshot</h2>
+            <dl className="mt-4 space-y-3 text-sm text-slate-700">
+              {jobSnapshot.map((item) => (
+                <div key={item.label} className="flex items-start justify-between gap-4">
+                  <dt className="text-slate-500">{item.label}</dt>
+                  <dd className="text-right font-medium text-slate-900">{item.value}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+
           {job.applyType === "external" ? (
             <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
               <h2 className="text-xl font-semibold text-slate-900">Apply through the employer</h2>
@@ -295,6 +398,20 @@ export default async function JobPage({ params }: JobPageProps) {
                 defaultName={signedInName}
                 defaultEmail={signedInEmail}
               />
+            </div>
+          ) : null}
+
+          {hubLinks.length > 0 ? (
+            <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 className="text-xl font-semibold text-slate-900">Explore related Salem pages</h2>
+              <div className="mt-4 space-y-3">
+                {hubLinks.map((link) => (
+                  <Link key={link.href} href={link.href} className="block rounded-2xl border border-slate-200 px-4 py-3 hover:bg-slate-50">
+                    <p className="font-medium text-slate-900">{link.title}</p>
+                    <p className="mt-1 text-sm leading-6 text-slate-600">{link.description}</p>
+                  </Link>
+                ))}
+              </div>
             </div>
           ) : null}
         </div>

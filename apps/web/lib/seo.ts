@@ -6,10 +6,12 @@ import { markdownToPlainText } from "@/lib/markdown"
 export const siteConfig = {
   name: "HireSalem",
   url: "https://hiresalem.com",
-  defaultTitle: "Salem Jobs Board",
+  canonicalHost: "hiresalem.com",
+  defaultTitle: "Jobs in Salem, Oregon",
   defaultDescription:
-    "Browse Salem-area jobs, discover local employers, and find openings across Salem, Keizer, and the greater mid-valley.",
-  defaultOgImagePath: "/opengraph-image"
+    "Find jobs in Salem, Oregon with local employers, fresh listings, and nearby opportunities across the mid-valley.",
+  defaultOgImagePath: "/opengraph-image",
+  organizationLogoPath: "/icon-512.png"
 } as const
 
 export const serviceAreas = [
@@ -31,8 +33,56 @@ export type SeoMetadataInput = {
   robots?: Metadata["robots"]
 }
 
-export function absoluteUrl(path = "/") {
-  return new URL(path, siteConfig.url).toString()
+const liveSiteHosts = new Set([siteConfig.canonicalHost, `www.${siteConfig.canonicalHost}`])
+
+function trimTrailingSlash(value: string) {
+  return value.endsWith("/") ? value.slice(0, -1) : value
+}
+
+export function isLocalHostname(hostname: string) {
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "0.0.0.0" || hostname === "::1" || hostname.endsWith(".local")
+}
+
+export function normalizePublicOrigin(origin?: string | null) {
+  if (!origin) {
+    return siteConfig.url
+  }
+
+  try {
+    const parsed = new URL(origin)
+
+    if (liveSiteHosts.has(parsed.hostname)) {
+      return siteConfig.url
+    }
+
+    return trimTrailingSlash(`${parsed.protocol}//${parsed.host}`)
+  } catch {
+    return siteConfig.url
+  }
+}
+
+export function getPublicOrigin(origin?: string | null) {
+  return normalizePublicOrigin(origin)
+}
+
+export function absoluteUrl(path = "/", origin = siteConfig.url) {
+  return new URL(path, normalizePublicOrigin(origin)).toString()
+}
+
+export function getCanonicalRedirectUrl(input: { url: string; forwardedProto?: string | null }) {
+  const requestUrl = new URL(input.url)
+  const forwardedProto = input.forwardedProto?.split(",")[0]?.trim()
+  const requestProtocol = forwardedProto || requestUrl.protocol.replace(":", "")
+
+  if (!liveSiteHosts.has(requestUrl.hostname)) {
+    return null
+  }
+
+  if (requestUrl.hostname === siteConfig.canonicalHost && requestProtocol === "https") {
+    return null
+  }
+
+  return absoluteUrl(`${requestUrl.pathname}${requestUrl.search}${requestUrl.hash}`)
 }
 
 export function snippet(value: string | null | undefined, fallback: string, maxLength = 160) {
@@ -112,21 +162,21 @@ export function getJobsPageCanonicalPath(params: JobsSearchParams) {
 
 export function getJobsPageTitle(params: JobsSearchParams) {
   if (isCleanJobsIndexPage(params)) {
-    return "Salem Jobs"
+    return "All HireSalem Jobs"
   }
 
   const parts = [
     params.q ? `${params.q} jobs` : null,
-    params.location ? `in ${params.location}` : null,
-    !params.q && !params.location ? "Search results" : null
+    params.location ? `for ${params.location}` : null,
+    !params.q && !params.location ? "Filtered jobs" : null
   ].filter(Boolean)
 
-  return parts.join(" ").trim() || "Search results"
+  return parts.join(" ").trim() || "Filtered jobs"
 }
 
 export function getJobsPageDescription(params: JobsSearchParams) {
   if (isCleanJobsIndexPage(params)) {
-    return "Browse local jobs in Salem, Keizer, and nearby mid-valley communities with fresh openings from Salem-area employers."
+    return "Browse the full searchable HireSalem index, compare employers, and use filters before jumping into Salem-specific landing pages."
   }
 
   const filters = [
@@ -138,6 +188,6 @@ export function getJobsPageDescription(params: JobsSearchParams) {
   ].filter(Boolean)
 
   return filters.length > 0
-    ? `Filtered Salem-area job search for ${filters.join(", ")}. Browse the full jobs index for the main indexable page.`
-    : "Filtered Salem-area job search results. Browse the full jobs index for the main indexable page."
+    ? `Filtered job results for ${filters.join(", ")}. Browse the main jobs index for the primary indexable page.`
+    : "Filtered job results. Browse the main jobs index for the primary indexable page."
 }

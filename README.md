@@ -77,3 +77,15 @@ Paid listings:
 - The web container exposes `3000` internally.
 - The Postgres container exposes `5432` internally for other services on the Docker network.
 - In Coolify, let the platform publish the web service and assign the external port or domain.
+
+## SEO Host Redirects
+
+Production should enforce canonical host redirects at the edge or CDN before traffic reaches the app:
+
+- `http://hiresalem.com/*` -> `https://hiresalem.com/*` with `308`
+- `http://www.hiresalem.com/*` -> `https://hiresalem.com/*` with `308`
+- `https://www.hiresalem.com/*` -> `https://hiresalem.com/*` with `308`
+
+Preserve the full path and query string on each redirect.
+
+The app also contains a fallback normalization layer for `www` and `http`, but the edge rule should remain the primary enforcement point for bots and users.

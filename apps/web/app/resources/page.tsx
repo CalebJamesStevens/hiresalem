@@ -1,3 +1,5 @@
+import Link from "next/link"
+
 import { JsonLd } from "@/components/json-ld"
 import { LinkCardGrid } from "@/components/link-card-grid"
 import { allResourceArticleLinks } from "@/lib/seo-taxonomy"
@@ -35,6 +37,14 @@ export default function ResourcesPage() {
             These guides are written for Salem-area job seekers who want better local search habits, stronger applications, and a clearer view of
             the Salem and Keizer market.
           </p>
+          <div className="flex flex-wrap gap-3 pt-2">
+            <Link href="/jobs/salem" className="rounded-full bg-slate-900 px-5 py-2.5 text-sm font-medium text-white">
+              Browse Salem jobs
+            </Link>
+            <Link href="/jobs" className="rounded-full border border-slate-300 px-5 py-2.5 text-sm font-medium text-slate-900">
+              Open all listings
+            </Link>
+          </div>
         </div>
       </section>
 

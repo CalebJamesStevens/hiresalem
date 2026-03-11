@@ -1,9 +1,9 @@
 import { notFound } from "next/navigation"
 
 import { JobsLandingPageView } from "@/components/jobs-landing-page"
-import { searchPublicJobs } from "@/lib/jobs"
+import { listTopEmployers, searchPublicJobs } from "@/lib/jobs"
 import { buildPageMetadata } from "@/lib/seo"
-import { getJobsLandingPageBySlug } from "@/lib/seo-taxonomy"
+import { allResourceArticleLinks, getJobsLandingPageBySlug, primaryLandingLinks } from "@/lib/seo-taxonomy"
 
 const pageContent = getJobsLandingPageBySlug("salem")
 
@@ -23,7 +23,16 @@ export default async function SalemJobsLandingPage() {
     notFound()
   }
 
-  const searchResult = await searchPublicJobs(pageContent.searchParams)
+  const [searchResult, topEmployers] = await Promise.all([searchPublicJobs(pageContent.searchParams), listTopEmployers(6)])
 
-  return <JobsLandingPageView page={pageContent} searchResult={searchResult} />
+  return (
+    <JobsLandingPageView
+      page={pageContent}
+      searchResult={searchResult}
+      featuredLinks={primaryLandingLinks.filter((item) => item.href !== "/jobs/salem" && item.href !== "/jobs/keizer")}
+      featuredLinksTitle="Popular Salem job paths"
+      featuredEmployers={topEmployers}
+      resourceLinks={allResourceArticleLinks.slice(0, 3)}
+    />
+  )
 }

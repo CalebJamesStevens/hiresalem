@@ -1,3 +1,5 @@
+import Link from "next/link"
+
 import { Breadcrumbs } from "@/components/breadcrumbs"
 import { FaqSection } from "@/components/faq-section"
 import { JsonLd } from "@/components/json-ld"
@@ -55,6 +57,14 @@ export function ResourceArticlePageView({ article }: { article: ResourceArticle 
             </p>
           ))}
         </div>
+        <div className="flex flex-wrap gap-3">
+          <Link href="/jobs/salem" className="rounded-full bg-slate-900 px-5 py-2.5 text-sm font-medium text-white">
+            Browse Salem jobs
+          </Link>
+          <Link href="/jobs" className="rounded-full border border-slate-300 px-5 py-2.5 text-sm font-medium text-slate-900">
+            Open all listings
+          </Link>
+        </div>
       </section>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(280px,0.9fr)]">
@@ -84,7 +94,7 @@ export function ResourceArticlePageView({ article }: { article: ResourceArticle 
         </aside>
       </div>
 
-      <FaqSection title="FAQ" items={article.faqs} />
+      {article.faqs.length > 0 ? <FaqSection title="FAQ" items={article.faqs} /> : null}
     </article>
   )
 }

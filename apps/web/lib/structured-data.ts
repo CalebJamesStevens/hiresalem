@@ -123,11 +123,12 @@ export function buildOrganizationJsonLd() {
   return {
     "@context": "https://schema.org",
     "@type": "Organization",
+    "@id": absoluteUrl("/#organization"),
     name: siteConfig.name,
     url: siteConfig.url,
+    logo: absoluteUrl(siteConfig.organizationLogoPath),
     areaServed: ["Salem", "Keizer", "Woodburn", "Dallas", "Monmouth", "Independence", "Silverton"],
-    knowsAbout: ["Jobs", "Hiring", "Salem jobs", "Local employers"],
-    sameAs: [siteConfig.url]
+    knowsAbout: ["Jobs", "Hiring", "Salem jobs", "Local employers"]
   }
 }
 
@@ -135,6 +136,7 @@ export function buildCompanyOrganizationJsonLd(input: { name: string; path: stri
   return {
     "@context": "https://schema.org",
     "@type": "Organization",
+    "@id": absoluteUrl(`${input.path}#organization`),
     name: input.name,
     url: absoluteUrl(input.path),
     sameAs: input.website ? [input.website] : undefined
@@ -145,8 +147,12 @@ export function buildWebsiteJsonLd() {
   return {
     "@context": "https://schema.org",
     "@type": "WebSite",
+    "@id": absoluteUrl("/#website"),
     name: siteConfig.name,
     url: siteConfig.url,
+    publisher: {
+      "@id": absoluteUrl("/#organization")
+    },
     potentialAction: {
       "@type": "SearchAction",
       target: `${siteConfig.url}/jobs?q={search_term_string}`,
@@ -177,13 +183,12 @@ export function buildCollectionPageJsonLd(input: {
   return {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
+    "@id": absoluteUrl(`${input.path}#collection`),
     name: input.name,
     description: input.description,
     url: absoluteUrl(input.path),
     isPartOf: {
-      "@type": "WebSite",
-      name: siteConfig.name,
-      url: siteConfig.url
+      "@id": absoluteUrl("/#website")
     },
     mainEntity: {
       "@type": "ItemList",
@@ -198,6 +203,10 @@ export function buildCollectionPageJsonLd(input: {
 }
 
 export function buildFaqJsonLd(questions: Array<{ question: string; answer: string }>) {
+  if (questions.length === 0) {
+    return null
+  }
+
   return {
     "@context": "https://schema.org",
     "@type": "FAQPage",
@@ -222,6 +231,7 @@ export function buildArticleJsonLd(input: {
   return {
     "@context": "https://schema.org",
     "@type": "Article",
+    "@id": absoluteUrl(`${input.path}#article`),
     headline: input.headline,
     description: input.description,
     url: absoluteUrl(input.path),
@@ -230,9 +240,7 @@ export function buildArticleJsonLd(input: {
       "@id": absoluteUrl(input.path)
     },
     publisher: {
-      "@type": "Organization",
-      name: siteConfig.name,
-      url: siteConfig.url
+      "@id": absoluteUrl("/#organization")
     },
     datePublished: input.datePublished?.toISOString(),
     dateModified: input.dateModified?.toISOString()
@@ -255,6 +263,7 @@ export function buildJobPostingJsonLd(input: JobPostingInput) {
   return {
     "@context": "https://schema.org",
     "@type": "JobPosting",
+    "@id": absoluteUrl(`${input.path}#jobposting`),
     title: input.title,
     description: input.description,
     datePosted: input.datePosted.toISOString(),
@@ -303,6 +312,7 @@ export function buildJobPostingJsonLd(input: JobPostingInput) {
           }
         }
       : undefined,
+    mainEntityOfPage: absoluteUrl(input.path),
     url: absoluteUrl(input.path),
     ...(input.directApply === null || input.directApply === undefined ? {} : { directApply: input.directApply })
   }

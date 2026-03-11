@@ -48,6 +48,7 @@ function formatSalary(job: PublicJobSearchResult) {
 
 export function JobCard({ job }: { job: PublicJobSearchResult }) {
   const description = markdownToPlainText(job.description) || "No description yet."
+  const postedAt = job.activatedAt ?? job.createdAt
   const meta = [
     job.workMode ? workModeOptions.find((option) => option.value === job.workMode)?.label : null,
     job.employmentType ? employmentTypeOptions.find((option) => option.value === job.employmentType)?.label : null,
@@ -60,7 +61,11 @@ export function JobCard({ job }: { job: PublicJobSearchResult }) {
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div className="space-y-2">
           <div className="space-y-1">
-            <h2 className="text-xl font-semibold text-slate-900">{job.title}</h2>
+            <h2 className="text-xl font-semibold text-slate-900">
+              <Link href={`/jobs/${job.slug}`} className="underline underline-offset-4">
+                {job.title}
+              </Link>
+            </h2>
             {job.companySlug && job.companyName ? (
               <Link href={buildCompanyJobsPath(job.companySlug)} className="text-sm font-medium text-slate-700 underline">
                 {job.companyName}
@@ -85,7 +90,7 @@ export function JobCard({ job }: { job: PublicJobSearchResult }) {
         </div>
 
         <div className="flex shrink-0 flex-col items-start gap-3 md:items-end">
-          <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">{formatRelativeDate(job.createdAt)}</p>
+          <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">{formatRelativeDate(postedAt)}</p>
           <Link href={`/jobs/${job.slug}`} className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white">
             View details
           </Link>

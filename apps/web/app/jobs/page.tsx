@@ -5,7 +5,7 @@ import { JobList } from "@/components/job-list"
 import { JobsSearchForm } from "@/components/jobs-search-form"
 import { LinkCardGrid } from "@/components/link-card-grid"
 import { SaveSearchPanel } from "@/components/save-search-panel"
-import { allJobsLandingLinks, allResourceArticleLinks } from "@/lib/seo-taxonomy"
+import { allJobsLandingLinks, allResourceArticleLinks, primaryLandingLinks } from "@/lib/seo-taxonomy"
 import { buildJobsSearchPath, getJobsSearchChips, hasActiveJobsSearchFilters, parseJobsSearchParams, type JobsSearchParams } from "@/lib/job-search"
 import { searchPublicJobs } from "@/lib/jobs"
 import {
@@ -35,7 +35,7 @@ function getJobsPageKeywords(params: JobsSearchParams) {
     return undefined
   }
 
-  return ["Salem Oregon jobs", "jobs in Salem Oregon", "hiring Salem Oregon", "Salem job board", "Salem Oregon employment"]
+  return ["HireSalem jobs", "local job listings", "current job openings"]
 }
 
 export async function generateMetadata({ searchParams }: JobsPageProps) {
@@ -84,14 +84,37 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
       <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-3">
-            <p className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-500">Main Salem jobs index</p>
-            <h1 className="text-3xl font-bold tracking-tight text-slate-950 md:text-4xl">Jobs in Salem Oregon and nearby communities</h1>
+            <p className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-500">All current HireSalem listings</p>
+            <h1 className="text-3xl font-bold tracking-tight text-slate-950 md:text-4xl">Browse all current jobs on HireSalem</h1>
             <p className="max-w-3xl text-base leading-7 text-slate-700">
-              Browse every current opening on HireSalem, then use the city and category landing pages below for stronger local searches like
-              restaurant jobs in Salem Oregon, construction jobs in Salem Oregon, or Keizer jobs.
+              Use this page when you want the full searchable index. Search by keyword, filter by role details, or jump into the Salem jobs hub when
+              you want the strongest local landing page for broad Salem intent.
             </p>
           </div>
-          <p className="text-sm text-slate-500">Salem-first search</p>
+          <Link href="/jobs/salem" className="text-sm font-medium text-slate-700 underline underline-offset-4">
+            Start with Salem jobs
+          </Link>
+        </div>
+      </section>
+
+      <section className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-1">
+            <h2 className="text-xl font-semibold text-slate-950">Need the local overview first?</h2>
+            <p className="text-sm leading-6 text-slate-600">
+              Start on the Salem jobs hub for the main local landing page, then come back here when you want every current listing and filter state.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/jobs/salem" className="rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white">
+              Open Salem jobs
+            </Link>
+            {primaryLandingLinks.slice(2, 5).map((item) => (
+              <Link key={item.href} href={item.href} className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700">
+                {item.title}
+              </Link>
+            ))}
+          </div>
         </div>
       </section>
 

@@ -11,6 +11,7 @@ import { syncGoogleIndexingForJobTransition } from "@/lib/job-indexing"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { getRequestKey } from "@/lib/request"
 import { getStripe } from "@/lib/stripe"
+import { getPublicOrigin } from "@/lib/seo"
 import { employmentTypeEnum, jobCategoryEnum, jobs, salaryIntervalEnum, workModeEnum } from "@repo/db/schema/jobs"
 
 const optionalUrlSchema = z.preprocess((value) => {
@@ -225,7 +226,7 @@ export async function POST(req: Request) {
     .returning()
 
   try {
-    const origin = process.env.NEXT_PUBLIC_APP_URL?.trim() || new URL(req.url).origin
+    const origin = getPublicOrigin(process.env.NEXT_PUBLIC_APP_URL?.trim() || new URL(req.url).origin)
     const checkoutSession = await stripe.checkout.sessions.create({
       mode: "payment",
       client_reference_id: created.id,
