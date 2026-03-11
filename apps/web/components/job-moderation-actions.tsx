@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 
@@ -60,6 +61,10 @@ export function JobModerationActions({
 
   return (
     <div className="flex items-center gap-2">
+      <Link href={`/post-job/${jobId}`} className="rounded border px-3 py-1 text-xs font-medium">
+        Edit
+      </Link>
+
       <button
         type="button"
         onClick={toggleActive}

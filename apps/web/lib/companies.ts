@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm"
+import { asc, eq } from "drizzle-orm"
 
 import { db } from "@/lib/db"
 import { companies } from "@repo/db/schema/companies"
@@ -22,6 +22,23 @@ export async function getCompanyByOwnerAuthId(ownerAuthId: string) {
 export async function getCompanyBySlug(slug: string) {
   const [company] = await db.select().from(companies).where(eq(companies.slug, slug)).limit(1)
   return company ?? null
+}
+
+export async function getCompanyById(id: string) {
+  const [company] = await db.select().from(companies).where(eq(companies.id, id)).limit(1)
+  return company ?? null
+}
+
+export async function listCompanies() {
+  return db
+    .select({
+      id: companies.id,
+      name: companies.name,
+      slug: companies.slug,
+      website: companies.website
+    })
+    .from(companies)
+    .orderBy(asc(companies.name), asc(companies.slug))
 }
 
 export async function createUniqueCompanySlug(name: string) {

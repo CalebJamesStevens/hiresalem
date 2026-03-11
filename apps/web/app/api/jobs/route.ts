@@ -1,9 +1,6 @@
 import { desc, eq } from "drizzle-orm"
-import { z } from "zod"
-
 import { hasRole, normalizeRoles } from "@/lib/authz"
-import { calculateJobListingPrice, getPublishedJobsFilter, JOB_LISTING_DEFAULT_DAYS, JOB_LISTING_MAX_DAYS, JOB_LISTING_MIN_DAYS } from "@/lib/job-listing-billing"
-import { getCompanyByOwnerAuthId } from "@/lib/companies"
+import { getPublishedJobsFilter } from "@/lib/job-listing-billing"
 import { getSessionSafe } from "@/lib/session"
 import { requireApiRoles } from "@/lib/api-auth"
 import { db } from "@/lib/db"
@@ -12,99 +9,16 @@ import { checkRateLimit } from "@/lib/rate-limit"
 import { getRequestKey } from "@/lib/request"
 import { getStripe } from "@/lib/stripe"
 import { getPublicOrigin } from "@/lib/seo"
-import { employmentTypeEnum, jobCategoryEnum, jobs, salaryIntervalEnum, workModeEnum } from "@repo/db/schema/jobs"
-
-const optionalUrlSchema = z.preprocess((value) => {
-  if (typeof value !== "string") {
-    return value
-  }
-
-  const trimmed = value.trim()
-  return trimmed ? trimmed : undefined
-}, z.string().url().optional())
-
-const optionalPositiveNumberSchema = z.preprocess((value) => {
-  if (typeof value === "string" && value.trim()) {
-    return Number(value.trim())
-  }
-
-  if (typeof value === "number") {
-    return value
-  }
-
-  return undefined
-}, z.number().finite().positive().optional())
-
-const listingDurationSchema = z.preprocess((value) => {
-  if (typeof value === "string" && value.trim()) {
-    return Number.parseInt(value.trim(), 10)
-  }
-
-  if (typeof value === "number") {
-    return value
-  }
-
-  return JOB_LISTING_DEFAULT_DAYS
-}, z.number().int().min(JOB_LISTING_MIN_DAYS).max(JOB_LISTING_MAX_DAYS))
-
-const createJobSchema = z
-  .object({
-    title: z.string().min(2),
-    slug: z.string().optional(),
-    location: z.string().optional(),
-    streetAddress: z.string().trim().min(2).max(200).optional(),
-    postalCode: z.string().trim().min(3).max(16).optional(),
-    salary: z.string().optional(),
-    workMode: z.enum(workModeEnum.enumValues).optional(),
-    employmentType: z.enum(employmentTypeEnum.enumValues).optional(),
-    category: z.enum(jobCategoryEnum.enumValues).optional(),
-    salaryMin: optionalPositiveNumberSchema,
-    salaryMax: optionalPositiveNumberSchema,
-    salaryCurrency: z.string().trim().min(3).max(3).optional(),
-    salaryInterval: z.enum(salaryIntervalEnum.enumValues).optional(),
-    description: z.string().optional(),
-    applyType: z.enum(["onsite", "external"]).default("onsite"),
-    applyUrl: optionalUrlSchema,
-    listingDurationDays: listingDurationSchema,
-    companyId: z.string().uuid().optional(),
-    website: z.string().optional()
-  })
-  .superRefine((value, ctx) => {
-    if (value.applyType === "external" && !value.applyUrl) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["applyUrl"],
-        message: "External apply URL is required for external jobs"
-      })
-    }
-
-    if (value.salaryMin && value.salaryMax && value.salaryMin > value.salaryMax) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["salaryMax"],
-        message: "Maximum salary must be greater than minimum salary"
-      })
-    }
-  })
-
-function toSlug(value: string) {
-  return value
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-}
-
-function cleanOptionalText(value: string | undefined) {
-  const trimmed = value?.trim()
-  return trimmed ? trimmed : null
-}
-
-function cleanOptionalCurrency(value: string | undefined) {
-  const trimmed = value?.trim().toUpperCase()
-  return trimmed ? trimmed : null
-}
+import {
+  buildCheckoutDescription,
+  buildJobWriteValues,
+  calculateJobExpiration,
+  calculateJobListingPrice,
+  jobWriteSchema,
+  resolveCompanyForJob,
+  toJobSlug
+} from "@/lib/job-write"
+import { jobs } from "@repo/db/schema/jobs"
 
 export async function GET() {
   const session = await getSessionSafe()
@@ -131,7 +45,7 @@ export async function POST(req: Request) {
     return Response.json({ error: "Rate limit exceeded" }, { status: 429 })
   }
 
-  const parsed = createJobSchema.safeParse(await req.json())
+  const parsed = jobWriteSchema.safeParse(await req.json())
   if (!parsed.success) {
     return Response.json({ error: parsed.error.issues[0]?.message ?? "Invalid payload" }, { status: 400 })
   }
@@ -142,43 +56,35 @@ export async function POST(req: Request) {
 
   const title = parsed.data.title.trim()
   const listingDurationDays = parsed.data.listingDurationDays
-  const baseSlug = toSlug(parsed.data.slug ?? title) || "job"
+  const baseSlug = toJobSlug(parsed.data.slug ?? title) || "job"
   const slug = parsed.data.slug ? baseSlug : `${baseSlug}-${Date.now().toString(36)}`
-  const ownerCompany = isAdmin ? null : await getCompanyByOwnerAuthId(authResult.user.id)
+  let companyForJob
 
-  if (!isAdmin && !ownerCompany) {
+  try {
+    companyForJob = await resolveCompanyForJob(parsed.data, authResult.user.id, isAdmin)
+  } catch (error) {
+    return Response.json({ error: error instanceof Error ? error.message : "Unable to resolve company." }, { status: 400 })
+  }
+
+  if (!isAdmin && !companyForJob) {
     return Response.json({ error: "Complete business setup before posting a job." }, { status: 400 })
   }
 
   const now = new Date()
+  const jobValues = buildJobWriteValues(parsed.data, companyForJob?.id ?? null)
 
   if (isAdmin) {
     const [created] = await db
       .insert(jobs)
       .values({
-        title,
         slug,
         ownerAuthId: authResult.user.id,
-        companyId: ownerCompany?.id ?? parsed.data.companyId ?? null,
-        location: cleanOptionalText(parsed.data.location),
-        streetAddress: cleanOptionalText(parsed.data.streetAddress),
-        postalCode: cleanOptionalText(parsed.data.postalCode),
-        salary: cleanOptionalText(parsed.data.salary),
-        workMode: parsed.data.workMode ?? null,
-        employmentType: parsed.data.employmentType ?? null,
-        category: parsed.data.category ?? null,
-        salaryMin: parsed.data.salaryMin ?? null,
-        salaryMax: parsed.data.salaryMax ?? null,
-        salaryCurrency: cleanOptionalCurrency(parsed.data.salaryCurrency) ?? (parsed.data.salaryMin || parsed.data.salaryMax ? "USD" : null),
-        salaryInterval: parsed.data.salaryInterval ?? null,
-        description: cleanOptionalText(parsed.data.description),
-        applyType: parsed.data.applyType,
-        applyUrl: parsed.data.applyType === "external" ? cleanOptionalText(parsed.data.applyUrl) : null,
+        ...jobValues,
         isActive: true,
         listingDurationDays,
         paymentStatus: "paid",
         activatedAt: now,
-        expiresAt: new Date(now.getTime() + listingDurationDays * 24 * 60 * 60 * 1000)
+        expiresAt: calculateJobExpiration(now, listingDurationDays)
       })
       .returning()
 
@@ -201,24 +107,9 @@ export async function POST(req: Request) {
   const [created] = await db
     .insert(jobs)
     .values({
-      title,
       slug,
       ownerAuthId: authResult.user.id,
-      companyId: ownerCompany?.id ?? parsed.data.companyId ?? null,
-      location: cleanOptionalText(parsed.data.location),
-      streetAddress: cleanOptionalText(parsed.data.streetAddress),
-      postalCode: cleanOptionalText(parsed.data.postalCode),
-      salary: cleanOptionalText(parsed.data.salary),
-      workMode: parsed.data.workMode ?? null,
-      employmentType: parsed.data.employmentType ?? null,
-      category: parsed.data.category ?? null,
-      salaryMin: parsed.data.salaryMin ?? null,
-      salaryMax: parsed.data.salaryMax ?? null,
-      salaryCurrency: cleanOptionalCurrency(parsed.data.salaryCurrency) ?? (parsed.data.salaryMin || parsed.data.salaryMax ? "USD" : null),
-      salaryInterval: parsed.data.salaryInterval ?? null,
-      description: cleanOptionalText(parsed.data.description),
-      applyType: parsed.data.applyType,
-      applyUrl: parsed.data.applyType === "external" ? cleanOptionalText(parsed.data.applyUrl) : null,
+      ...jobValues,
       isActive: false,
       listingDurationDays,
       paymentStatus: "pending"
@@ -245,7 +136,7 @@ export async function POST(req: Request) {
             unit_amount: calculateJobListingPrice(1),
             product_data: {
               name: "HireSalem job listing",
-              description: `${title} for ${ownerCompany?.name ?? "your company"}`
+              description: buildCheckoutDescription(title, companyForJob?.name ?? null)
             }
           }
         }

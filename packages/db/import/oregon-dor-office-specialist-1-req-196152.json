@@ -1,0 +1,33 @@
+{
+  "companies": [
+    {
+      "slug": "department-of-revenue",
+      "name": "Department of Revenue",
+      "website": "https://www.oregon.gov/DOR"
+    }
+  ],
+  "jobs": [
+    {
+      "slug": "office-specialist-1-two-positions-req-196152",
+      "title": "Office Specialist 1 (Two positions)",
+      " ": "department-of-revenue",
+      "location": "Salem, OR (DOR Revenue Building)",
+      "salary": "$3,515 - $4,312",
+      "workMode": "hybrid",
+      "employmentType": "full_time",
+      "category": "administration",
+      "salaryMin": 3515,
+      "salaryMax": 4312,
+      "salaryCurrency": "USD",
+      "description": "## Why Join Us\n\nOregon counts on the Department of Revenue to serve taxpayers whose tax dollars support critical public infrastructure across the state.\n\nThe Department of Revenue is recruiting for two Office Specialist 1 positions in the Collections Division, Collections Central Support Unit.\n\nThese positions are headquartered in Salem and may be eligible for in-state hybrid work. The role requires in-office work one day per week. To be considered, applicants must reside in Oregon, except current Revenue employees who live outside Oregon may still apply.\n\n## What You Will Do\n\n- Document incoming correspondence for tracking purposes.\n- Key, scan, and attach correspondence to taxpayer accounts in GenTax to support collection activities.\n- Review and help update desk procedures when process improvements are identified.\n\n## Minimum Qualifications\n\n- One year of general clerical experience that includes keyboarding, word processing, or other experience generating documents; or\n- An equivalent combination of experience and college coursework or training in a general office occupation.\n\n## Desired Skills\n\n- Ability to follow procedures closely.\n- Strong attention to detail.\n- Excellent organizational skills.\n- Ability to promote a healthy and collaborative team environment.\n\n## Benefits\n\nThe State of Oregon offers medical, vision, and dental coverage, pension and retirement programs, paid holidays, vacation leave, sick leave, and optional benefits including life insurance, disability coverage, deferred compensation, and flexible spending accounts.\n\n## Application Notes\n\n- Apply through Workday by the posted closing date.\n- Resume required; Workday job history may substitute.\n- Complete any supplemental questions in Workday.\n- Workday times out after 20 minutes of inactivity, so use the save-for-later function if needed.\n- Check Workday and email after submission for additional required tasks.\n- Veterans' preference is available for eligible veterans and Oregon National Guard servicemembers.\n\n## Additional Information\n\n- SEIU-represented position.\n- This recruitment may be used to fill additional vacancies.\n- The listed salary is the non-PERS qualifying salary range; PERS-qualifying salary reflects an additional 6.95%.\n- Applicants must be authorized to work in the United States. Visa sponsorship is not available.\n- Employment is contingent on passing a criminal background and fingerprinting check.\n- Employees must comply with Oregon income tax laws.\n\nContact: Elizabeth Zolkoske at Elizabeth.ZOLKOSKE@dor.oregon.gov.\n\nPosition description PDF: https://www.oregon.gov/dor/gethelp/HR%20PDs/REQ-196152%20OS1%20PD.pdf",
+      "applyType": "external",
+      "applyUrl": "https://oregon.wd5.myworkdayjobs.com/en-US/SOR_External_Career_Site/job/Office-Specialist-1--Two-positions-_REQ-196152",
+      "isActive": true,
+      "listingDurationDays": 7,
+      "paymentStatus": "paid",
+      "activatedAt": "2026-03-10T07:00:00.000Z",
+      "expiresAt": "2026-03-18T06:59:59.000Z",
+      "createdAt": "2026-03-10T07:00:00.000Z"
+    }
+  ]
+}

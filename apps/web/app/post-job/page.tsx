@@ -1,6 +1,6 @@
 import { JobForm } from "@/components/job-form"
 import { formatJobListingPrice, JOB_LISTING_PRICE_PER_DAY_CENTS } from "@/lib/job-listing-billing"
-import { getCompanyByOwnerAuthId } from "@/lib/companies"
+import { getCompanyByOwnerAuthId, listCompanies } from "@/lib/companies"
 import { hasRole } from "@/lib/authz"
 import { requirePageRoles } from "@/lib/page-auth"
 import Link from "next/link"
@@ -15,7 +15,10 @@ export default async function PostJobPage({ searchParams }: PostJobPageProps) {
   const params = await searchParams
   const user = await requirePageRoles(["business", "admin"], "/post-job")
   const isAdmin = hasRole(user.roles, "admin")
-  const company = isAdmin ? null : await getCompanyByOwnerAuthId(user.id)
+  const [company, existingCompanies] = await Promise.all([
+    isAdmin ? Promise.resolve(null) : getCompanyByOwnerAuthId(user.id),
+    isAdmin ? listCompanies() : Promise.resolve([])
+  ])
 
   return (
     <section className="space-y-6">
@@ -33,7 +36,13 @@ export default async function PostJobPage({ searchParams }: PostJobPageProps) {
       ) : company ? (
         <p className="text-sm text-slate-600">Posting as {company.name}.</p>
       ) : null}
-      <JobForm disabled={!isAdmin && !company} requiresPayment={!isAdmin} />
+      <JobForm
+        disabled={!isAdmin && !company}
+        requiresPayment={!isAdmin}
+        isAdmin={isAdmin}
+        existingCompanies={existingCompanies}
+        postingCompanyName={company?.name ?? null}
+      />
     </section>
   )
 }
