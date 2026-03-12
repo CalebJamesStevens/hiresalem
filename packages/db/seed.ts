@@ -11,14 +11,16 @@ const companyRows = [
     slug: "willamette-works",
     name: "Willamette Works",
     ownerAuthId: "kc-business-001",
-    website: "https://example.com/willamette"
+    website: "https://example.com/willamette",
+    plan: "free" as const
   },
   {
     id: "22222222-2222-2222-2222-222222222222",
     slug: "salem-design-co",
     name: "Salem Design Co",
     ownerAuthId: "kc-business-002",
-    website: "https://example.com/salem-design"
+    website: "https://example.com/salem-design",
+    plan: "free" as const
   }
 ] as const
 

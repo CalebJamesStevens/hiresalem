@@ -1,4 +1,8 @@
-import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core"
+import { pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core"
+
+import { companyPlanIds } from "../plans"
+
+export const companyPlanEnum = pgEnum("company_plan", companyPlanIds)
 
 export const companies = pgTable("companies", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -6,5 +10,9 @@ export const companies = pgTable("companies", {
   name: text("name").notNull(),
   ownerAuthId: text("owner_auth_id").notNull().unique(),
   website: text("website"),
+  plan: companyPlanEnum("plan").default("free").notNull(),
+  planOverride: companyPlanEnum("plan_override"),
+  planOverrideReason: text("plan_override_reason"),
+  planAssignedAt: timestamp("plan_assigned_at").defaultNow().notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull()
 })

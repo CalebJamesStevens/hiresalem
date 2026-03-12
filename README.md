@@ -60,6 +60,13 @@ Paid listings:
 - if Google Indexing API credentials are configured, live job pages automatically notify Google when they are published, closed, deleted, or expired
 - schedule `/api/cron/job-expirations` with `x-cron-secret: $CRON_SECRET` so expired listings are marked closed and sent to Google as removals
 
+Business plans foundation:
+
+- employer/company accounts now persist a base `plan` plus an optional `planOverride`
+- the effective plan and entitlements live in [`packages/db/plans.ts`](/Users/caleb/repos/hiresalem/packages/db/plans.ts)
+- existing companies default safely to `free`
+- the `free` plan currently allows up to 3 active jobs, standard visibility, and basic profile fields only
+
 ## Commands
 
 - `bun install`

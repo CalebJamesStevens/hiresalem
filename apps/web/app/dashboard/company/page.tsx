@@ -4,6 +4,7 @@ import { redirect } from "next/navigation"
 import { hasRole } from "@/lib/authz"
 import { getCompanyById, getCompanyByOwnerAuthId, listCompanies, normalizeCompanyWebsite, updateCompanyProfile } from "@/lib/companies"
 import { requirePageRoles } from "@/lib/page-auth"
+import { resolveCompanyPlan } from "@repo/db/plans"
 
 type DashboardCompanyPageProps = {
   searchParams: Promise<{
@@ -43,6 +44,7 @@ export default async function DashboardCompanyPage({ searchParams }: DashboardCo
 
   const selectedCompanyId = isAdmin ? params.companyId?.trim() || ownedCompany?.id || companyOptions[0]?.id || null : ownedCompany?.id ?? null
   const editableCompany = selectedCompanyId ? await getCompanyById(selectedCompanyId) : null
+  const resolvedPlan = editableCompany ? resolveCompanyPlan(editableCompany) : null
 
   if (!isAdmin && !ownedCompany) {
     redirect("/become-business")
@@ -76,7 +78,7 @@ export default async function DashboardCompanyPage({ searchParams }: DashboardCo
             <select id="companyId" name="companyId" defaultValue={selectedCompanyId ?? ""} className="min-w-[18rem] rounded border px-3 py-2">
               {companyOptions.map((company) => (
                 <option key={company.id} value={company.id}>
-                  {company.name} ({company.slug})
+                  {company.name} ({company.slug}) - {resolveCompanyPlan(company).label}
                 </option>
               ))}
             </select>
@@ -163,6 +165,12 @@ export default async function DashboardCompanyPage({ searchParams }: DashboardCo
                 /jobs/company/{editableCompany.slug}
               </Link>
             </p>
+            {isAdmin && resolvedPlan ? (
+              <p className="mt-1">
+                Current plan: {resolvedPlan.label}
+                {resolvedPlan.source === "override" ? " (manual override active)" : ""}
+              </p>
+            ) : null}
             <p className="mt-1">The company slug stays fixed so existing links do not break.</p>
           </div>
 

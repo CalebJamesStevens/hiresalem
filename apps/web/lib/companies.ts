@@ -35,7 +35,9 @@ export async function listCompanies() {
       id: companies.id,
       name: companies.name,
       slug: companies.slug,
-      website: companies.website
+      website: companies.website,
+      plan: companies.plan,
+      planOverride: companies.planOverride
     })
     .from(companies)
     .orderBy(asc(companies.name), asc(companies.slug))
