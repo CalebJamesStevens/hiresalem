@@ -1,25 +1,23 @@
 import { desc, eq } from "drizzle-orm"
 import { hasRole, normalizeRoles } from "@/lib/authz"
-import { getPublishedJobsFilter } from "@/lib/job-listing-billing"
+import { getPublishedJobsFilter, JOB_LISTING_DEFAULT_DAYS } from "@/lib/job-listing-billing"
 import { getSessionSafe } from "@/lib/session"
 import { requireApiRoles } from "@/lib/api-auth"
 import { db } from "@/lib/db"
 import { syncGoogleIndexingForJobTransition } from "@/lib/job-indexing"
+import { countPublishedJobsForCompany } from "@/lib/jobs"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { getRequestKey } from "@/lib/request"
-import { getStripe } from "@/lib/stripe"
-import { getPublicOrigin } from "@/lib/seo"
 import {
-  buildCheckoutDescription,
   buildJobWriteValues,
   calculateJobExpiration,
-  calculateJobListingPrice,
   getJobPublicationValidationMessage,
   getJobPublicationValidationReasons,
   jobWriteSchema,
   resolveCompanyForJob,
   toJobSlug
 } from "@/lib/job-write"
+import { isWithinCompanyActiveJobLimit, resolveCompanyPlan } from "@repo/db/plans"
 import { jobs } from "@repo/db/schema/jobs"
 
 export async function GET() {
@@ -47,7 +45,9 @@ export async function POST(req: Request) {
     return Response.json({ error: "Rate limit exceeded" }, { status: 429 })
   }
 
-  const parsed = jobWriteSchema.safeParse(await req.json())
+  const payload = await req.json()
+  const submissionAction = payload?.submissionAction === "draft" ? "draft" : "publish"
+  const parsed = jobWriteSchema.safeParse(payload)
   if (!parsed.success) {
     return Response.json({ error: parsed.error.issues[0]?.message ?? "Invalid payload" }, { status: 400 })
   }
@@ -57,7 +57,6 @@ export async function POST(req: Request) {
   }
 
   const title = parsed.data.title.trim()
-  const listingDurationDays = parsed.data.listingDurationDays
   const baseSlug = toJobSlug(parsed.data.slug ?? title) || "job"
   const slug = parsed.data.slug ? baseSlug : `${baseSlug}-${Date.now().toString(36)}`
   let companyForJob
@@ -73,9 +72,13 @@ export async function POST(req: Request) {
   }
 
   const now = new Date()
+  const companyPlan = !isAdmin && companyForJob ? resolveCompanyPlan(companyForJob) : null
+  const listingDurationDays =
+    !isAdmin && companyPlan && !companyPlan.entitlements.allowsLongerJobDuration ? JOB_LISTING_DEFAULT_DAYS : parsed.data.listingDurationDays
   const jobValues = buildJobWriteValues(parsed.data, companyForJob?.id ?? null)
-  const publicationValidationReasons = getJobPublicationValidationReasons(jobValues)
-  const publicationValidationMessage = getJobPublicationValidationMessage(publicationValidationReasons)
+  const shouldPublishNow = isAdmin || submissionAction === "publish"
+  const publicationValidationReasons = shouldPublishNow ? getJobPublicationValidationReasons(jobValues) : []
+  const publicationValidationMessage = shouldPublishNow ? getJobPublicationValidationMessage(publicationValidationReasons) : null
 
   if (publicationValidationMessage) {
     return Response.json({ error: publicationValidationMessage }, { status: 400 })
@@ -104,12 +107,22 @@ export async function POST(req: Request) {
     return Response.json(created, { status: 201 })
   }
 
-  let stripe
+  if (shouldPublishNow && companyForJob && companyPlan) {
+    const activeJobCount = await countPublishedJobsForCompany(companyForJob.id)
+    const maxActiveJobs = companyPlan.entitlements.maxActiveJobs
+    const nextActiveJobCount = activeJobCount + 1
 
-  try {
-    stripe = getStripe()
-  } catch {
-    return Response.json({ error: "Stripe billing is not configured yet." }, { status: 503 })
+    if (!isWithinCompanyActiveJobLimit(nextActiveJobCount, companyPlan.effectivePlanId)) {
+      return Response.json(
+        {
+          error:
+            maxActiveJobs === null
+              ? "This plan cannot publish another live job right now."
+              : `Free plan allows up to ${maxActiveJobs} live jobs. Close one live job before publishing another.`
+        },
+        { status: 400 }
+      )
+    }
   }
 
   const [created] = await db
@@ -118,60 +131,20 @@ export async function POST(req: Request) {
       slug,
       ownerAuthId: authResult.user.id,
       ...jobValues,
-      isActive: false,
+      isActive: shouldPublishNow,
       listingDurationDays,
-      paymentStatus: "pending"
+      paymentStatus: "paid",
+      activatedAt: shouldPublishNow ? now : null,
+      expiresAt: shouldPublishNow ? calculateJobExpiration(now, listingDurationDays) : null
     })
     .returning()
 
-  try {
-    const origin = getPublicOrigin(process.env.NEXT_PUBLIC_APP_URL?.trim() || new URL(req.url).origin)
-    const checkoutSession = await stripe.checkout.sessions.create({
-      mode: "payment",
-      client_reference_id: created.id,
-      customer_email: authResult.user.email ?? undefined,
-      success_url: `${origin}/post-job/success?jobId=${created.id}&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/post-job?canceled=1&jobId=${created.id}`,
-      metadata: {
-        jobId: created.id,
-        ownerAuthId: authResult.user.id
-      },
-      line_items: [
-        {
-          quantity: listingDurationDays,
-          price_data: {
-            currency: "usd",
-            unit_amount: calculateJobListingPrice(1),
-            product_data: {
-              name: "HireSalem job listing",
-              description: buildCheckoutDescription(title, companyForJob?.name ?? null)
-            }
-          }
-        }
-      ]
+  if (shouldPublishNow) {
+    await syncGoogleIndexingForJobTransition({
+      before: null,
+      after: created
     })
-
-    if (!checkoutSession.url) {
-      await db.delete(jobs).where(eq(jobs.id, created.id))
-      return Response.json({ error: "Stripe checkout did not return a hosted URL." }, { status: 502 })
-    }
-
-    await db
-      .update(jobs)
-      .set({
-        stripeCheckoutSessionId: checkoutSession.id
-      })
-      .where(eq(jobs.id, created.id))
-
-    return Response.json(
-      {
-        jobId: created.id,
-        checkoutUrl: checkoutSession.url
-      },
-      { status: 201 }
-    )
-  } catch {
-    await db.delete(jobs).where(eq(jobs.id, created.id))
-    return Response.json({ error: "Unable to start Stripe checkout." }, { status: 502 })
   }
+
+  return Response.json(created, { status: 201 })
 }

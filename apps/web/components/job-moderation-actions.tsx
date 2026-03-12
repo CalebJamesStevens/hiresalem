@@ -4,20 +4,24 @@ import Link from "next/link"
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 
+import type { EmployerJobLifecycleStatus } from "@/lib/job-listing-billing"
+
 export function JobModerationActions({
   jobId,
-  isActive,
-  canReopen = true,
+  jobStatus,
+  canActivate = true,
   canDelete = true
 }: {
   jobId: string
-  isActive: boolean
-  canReopen?: boolean
+  jobStatus: EmployerJobLifecycleStatus
+  canActivate?: boolean
   canDelete?: boolean
 }) {
   const router = useRouter()
   const [status, setStatus] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  const isActive = jobStatus === "live"
+  const activationLabel = jobStatus === "draft" ? "Publish" : jobStatus === "closed" ? "Reopen" : jobStatus === "live" ? "Close" : "Unavailable"
 
   function toggleActive() {
     startTransition(async () => {
@@ -35,7 +39,7 @@ export function JobModerationActions({
         return
       }
 
-      setStatus(isActive ? "Marked as closed" : "Reopened")
+      setStatus(isActive ? "Marked as closed" : jobStatus === "draft" ? "Published" : "Reopened")
       router.refresh()
     })
   }
@@ -68,10 +72,10 @@ export function JobModerationActions({
       <button
         type="button"
         onClick={toggleActive}
-        disabled={isPending || (!isActive && !canReopen)}
+        disabled={isPending || (!isActive && !canActivate)}
         className="rounded border px-3 py-1 text-xs font-medium"
       >
-        {isActive ? "Close" : canReopen ? "Reopen" : "Unavailable"}
+        {isActive ? "Close" : canActivate ? activationLabel : "Unavailable"}
       </button>
 
       {canDelete ? (

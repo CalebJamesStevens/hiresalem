@@ -11,7 +11,10 @@ const companyRows = [
     slug: "willamette-works",
     name: "Willamette Works",
     ownerAuthId: "kc-business-001",
+    logoUrl: "https://example.com/assets/willamette-works-logo.png",
+    shortDescription: "Willamette Works builds operations software for logistics teams across the mid-valley.",
     website: "https://example.com/willamette",
+    location: "Salem, OR",
     plan: "free" as const
   },
   {
@@ -19,7 +22,10 @@ const companyRows = [
     slug: "salem-design-co",
     name: "Salem Design Co",
     ownerAuthId: "kc-business-002",
+    logoUrl: "https://example.com/assets/salem-design-co-logo.png",
+    shortDescription: "Salem Design Co helps regional employers ship better digital products and customer experiences.",
     website: "https://example.com/salem-design",
+    location: "Keizer, OR",
     plan: "free" as const
   }
 ] as const

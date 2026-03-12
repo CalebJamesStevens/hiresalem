@@ -66,6 +66,9 @@ Business plans foundation:
 - the effective plan and entitlements live in [`packages/db/plans.ts`](/Users/caleb/repos/hiresalem/packages/db/plans.ts)
 - existing companies default safely to `free`
 - the `free` plan currently allows up to 3 active jobs, standard visibility, and basic profile fields only
+- Free-plan onboarding lives at `/become-business` and captures the basic public company profile fields: name, logo URL, short description, website, and city/area
+- the employer-facing profile editor lives at `/dashboard/company`, and the public company page continues to render at `/jobs/company/[slug]`
+- Free-plan employers can save drafts, publish up to 3 live jobs at once, close/reopen eligible jobs from `/dashboard/jobs`, and use the standard listing duration without billing
 
 ## Commands
 

@@ -1,7 +1,7 @@
 import Link from "next/link"
 
 import { JobModerationActions } from "@/components/job-moderation-actions"
-import { getJobStatusLabel, isJobExpired } from "@/lib/job-listing-billing"
+import { getEmployerJobLifecycleStatus, getJobStatusLabel, isJobExpired } from "@/lib/job-listing-billing"
 import { requirePageRoles } from "@/lib/page-auth"
 import { listAllJobs } from "@/lib/jobs"
 
@@ -35,7 +35,7 @@ export default async function AdminJobsPage() {
                 </p>
                 {job.expiresAt ? <p className="text-sm text-slate-600">Paid through {job.expiresAt.toLocaleDateString()}</p> : null}
               </div>
-              <JobModerationActions jobId={job.id} isActive={job.isActive} canReopen={job.paymentStatus === "paid" && !isJobExpired(job)} />
+              <JobModerationActions jobId={job.id} jobStatus={getEmployerJobLifecycleStatus(job)} canActivate={job.paymentStatus === "paid" && !isJobExpired(job)} />
             </div>
           </article>
         ))}

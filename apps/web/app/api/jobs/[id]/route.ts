@@ -2,7 +2,9 @@ import { eq } from "drizzle-orm"
 import { z } from "zod"
 
 import { hasRole, normalizeRoles } from "@/lib/authz"
-import { getJobStatusLabel, isJobExpired, isJobPublished } from "@/lib/job-listing-billing"
+import { getCompanyById } from "@/lib/companies"
+import { getJobStatusLabel, isJobExpired, isJobPublished, JOB_LISTING_DEFAULT_DAYS } from "@/lib/job-listing-billing"
+import { countPublishedJobsForCompany } from "@/lib/jobs"
 import {
   buildJobWriteValues,
   calculateJobExpiration,
@@ -15,6 +17,7 @@ import { getSessionSafe } from "@/lib/session"
 import { requireApiRoles } from "@/lib/api-auth"
 import { db } from "@/lib/db"
 import { syncGoogleIndexingForJobTransition } from "@/lib/job-indexing"
+import { isWithinCompanyActiveJobLimit, resolveCompanyPlan } from "@repo/db/plans"
 import { jobs } from "@repo/db/schema/jobs"
 
 const updateJobSchema = z.object({
@@ -75,24 +78,57 @@ export async function PATCH(req: Request, { params }: JobRouteContext) {
     return Response.json({ error: "Forbidden" }, { status: 403 })
   }
 
+  const now = new Date()
+
   if (parsed.data.isActive) {
     if (existing.paymentStatus !== "paid") {
       return Response.json({ error: `This listing cannot be reopened: ${getJobStatusLabel(existing).toLowerCase()}.` }, { status: 400 })
     }
 
     if (isJobExpired(existing)) {
-      return Response.json({ error: "This listing has expired. Create a new paid listing to publish it again." }, { status: 400 })
+      return Response.json({ error: "This listing has expired. Create a new listing to publish it again." }, { status: 400 })
     }
 
     const publicationValidationMessage = getJobPublicationValidationMessage(getJobPublicationValidationReasons(existing))
     if (publicationValidationMessage) {
       return Response.json({ error: publicationValidationMessage }, { status: 400 })
     }
+
+    if (!isAdmin && existing.companyId) {
+      const company = await getCompanyById(existing.companyId)
+
+      if (company) {
+        const companyPlan = resolveCompanyPlan(company)
+        const activeJobCount = await countPublishedJobsForCompany(company.id, { excludeJobId: existing.id, now })
+        const nextActiveJobCount = activeJobCount + 1
+        const maxActiveJobs = companyPlan.entitlements.maxActiveJobs
+
+        if (!isWithinCompanyActiveJobLimit(nextActiveJobCount, companyPlan.effectivePlanId)) {
+          return Response.json(
+            {
+              error:
+                maxActiveJobs === null
+                  ? "This plan cannot publish another live job right now."
+                  : `Free plan allows up to ${maxActiveJobs} live jobs. Close one live job before publishing another.`
+            },
+            { status: 400 }
+          )
+        }
+      }
+    }
   }
 
   const [updated] = await db
     .update(jobs)
-    .set({ isActive: parsed.data.isActive })
+    .set(
+      parsed.data.isActive
+        ? {
+            isActive: true,
+            activatedAt: existing.activatedAt ?? now,
+            expiresAt: existing.expiresAt ?? calculateJobExpiration(existing.activatedAt ?? now, existing.listingDurationDays)
+          }
+        : { isActive: false }
+    )
     .where(eq(jobs.id, id))
     .returning()
 
@@ -111,7 +147,9 @@ export async function PUT(req: Request, { params }: JobRouteContext) {
   }
 
   const { id } = await params
-  const parsed = jobWriteSchema.safeParse(await req.json())
+  const payload = await req.json()
+  const submissionAction = payload?.submissionAction === "publish" ? "publish" : "save"
+  const parsed = jobWriteSchema.safeParse(payload)
 
   if (!parsed.success) {
     return Response.json({ error: parsed.error.issues[0]?.message ?? "Invalid payload" }, { status: 400 })
@@ -144,21 +182,53 @@ export async function PUT(req: Request, { params }: JobRouteContext) {
     return Response.json({ error: "Complete business setup before editing a job." }, { status: 400 })
   }
 
+  const companyPlan = !isAdmin && companyForJob ? resolveCompanyPlan(companyForJob) : null
+  const nextListingDurationDays =
+    !isAdmin && companyPlan && !companyPlan.entitlements.allowsLongerJobDuration ? JOB_LISTING_DEFAULT_DAYS : existing.listingDurationDays
   const nextValues = buildJobWriteValues(parsed.data, companyForJob?.id ?? null)
-  const publicationValidationReasons = getJobPublicationValidationReasons(nextValues)
-  const publicationValidationMessage = getJobPublicationValidationMessage(publicationValidationReasons)
+  const shouldPublishNow = submissionAction === "publish"
+  const shouldValidatePublication = existing.isActive || shouldPublishNow
+  const publicationValidationReasons = shouldValidatePublication ? getJobPublicationValidationReasons(nextValues) : []
+  const publicationValidationMessage = shouldValidatePublication ? getJobPublicationValidationMessage(publicationValidationReasons) : null
 
   if (publicationValidationMessage) {
     return Response.json({ error: publicationValidationMessage }, { status: 400 })
   }
 
+  const now = new Date()
+
+  if (shouldPublishNow && !existing.isActive && !isAdmin && companyForJob && companyPlan) {
+    const activeJobCount = await countPublishedJobsForCompany(companyForJob.id, { excludeJobId: existing.id, now })
+    const nextActiveJobCount = activeJobCount + 1
+    const maxActiveJobs = companyPlan.entitlements.maxActiveJobs
+
+    if (!isWithinCompanyActiveJobLimit(nextActiveJobCount, companyPlan.effectivePlanId)) {
+      return Response.json(
+        {
+          error:
+            maxActiveJobs === null
+              ? "This plan cannot publish another live job right now."
+              : `Free plan allows up to ${maxActiveJobs} live jobs. Close one live job before publishing another.`
+        },
+        { status: 400 }
+      )
+    }
+  }
+
   const shouldRecalculateExpiration = Boolean(existing.activatedAt)
+  const nextActivatedAt = shouldPublishNow ? existing.activatedAt ?? now : existing.activatedAt
   const [updated] = await db
     .update(jobs)
     .set({
       ...nextValues,
-      listingDurationDays: existing.listingDurationDays,
-      expiresAt: shouldRecalculateExpiration && existing.activatedAt ? calculateJobExpiration(existing.activatedAt, existing.listingDurationDays) : existing.expiresAt
+      isActive: shouldPublishNow ? true : existing.isActive,
+      paymentStatus: existing.paymentStatus,
+      activatedAt: nextActivatedAt,
+      listingDurationDays: nextListingDurationDays,
+      expiresAt:
+        nextActivatedAt && (shouldRecalculateExpiration || shouldPublishNow)
+          ? calculateJobExpiration(nextActivatedAt, nextListingDurationDays)
+          : existing.expiresAt
     })
     .where(eq(jobs.id, id))
     .returning()

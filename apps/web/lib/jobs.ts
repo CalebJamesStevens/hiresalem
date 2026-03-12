@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, ilike, sql, type SQL } from "drizzle-orm"
+import { and, asc, desc, eq, gt, ilike, isNull, ne, or, sql, type SQL } from "drizzle-orm"
 
 import { db } from "@/lib/db"
 import type { JobsSearchParams } from "@/lib/job-search"
@@ -360,6 +360,29 @@ export async function listActiveJobsForCompany(companyId: string) {
     .from(jobs)
     .where(and(eq(jobs.companyId, companyId), getPublishedJobsFilter()))
     .orderBy(desc(jobs.createdAt))
+}
+
+export async function countPublishedJobsForCompany(companyId: string, input?: { excludeJobId?: string | null; now?: Date }) {
+  const now = input?.now ?? new Date()
+  const predicates = [
+    eq(jobs.companyId, companyId),
+    eq(jobs.isActive, true),
+    eq(jobs.paymentStatus, "paid"),
+    or(isNull(jobs.expiresAt), gt(jobs.expiresAt, now))
+  ]
+
+  if (input?.excludeJobId) {
+    predicates.push(ne(jobs.id, input.excludeJobId))
+  }
+
+  const [row] = await db
+    .select({
+      count: sql<number>`count(*)::int`
+    })
+    .from(jobs)
+    .where(and(...predicates))
+
+  return row?.count ?? 0
 }
 
 export async function listMatchingPublicJobsForAlert(params: JobsSearchParams, since: Date | null, limit = 10) {

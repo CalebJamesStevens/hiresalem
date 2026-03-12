@@ -1,9 +1,65 @@
 import { asc, eq } from "drizzle-orm"
+import { z } from "zod"
 
 import { db } from "@/lib/db"
+import { snippet } from "@/lib/seo"
 import { companies } from "@repo/db/schema/companies"
 
 export type Company = typeof companies.$inferSelect
+export type CompanyProfileViewer = {
+  id: string
+  isAdmin: boolean
+}
+
+export const COMPANY_NAME_MAX_LENGTH = 80
+export const COMPANY_LOGO_URL_MAX_LENGTH = 500
+export const COMPANY_SHORT_DESCRIPTION_MAX_LENGTH = 280
+export const COMPANY_LOCATION_MAX_LENGTH = 120
+export const COMPANY_WEBSITE_MAX_LENGTH = 500
+
+const optionalProfileTextField = (max: number, message: string) =>
+  z.preprocess((value) => {
+    if (typeof value !== "string") {
+      return value
+    }
+
+    const trimmed = value.trim()
+    return trimmed ? trimmed : undefined
+  }, z.string().max(max, message).optional())
+
+const optionalProfileUrlField = (max: number, message: string) =>
+  z.preprocess((value) => {
+    if (typeof value !== "string") {
+      return value
+    }
+
+    const trimmed = value.trim()
+    return trimmed ? trimmed : undefined
+  }, z.string().max(max, message).url(message).optional())
+
+const companyProfileInputSchema = z.object({
+  name: z.string().trim().min(2, "company_name_length").max(COMPANY_NAME_MAX_LENGTH, "company_name_length"),
+  logoUrl: optionalProfileUrlField(COMPANY_LOGO_URL_MAX_LENGTH, "invalid_logo_url"),
+  shortDescription: optionalProfileTextField(COMPANY_SHORT_DESCRIPTION_MAX_LENGTH, "short_description_length"),
+  website: optionalProfileUrlField(COMPANY_WEBSITE_MAX_LENGTH, "invalid_website"),
+  location: optionalProfileTextField(COMPANY_LOCATION_MAX_LENGTH, "company_location_length")
+})
+
+export type CompanyProfileInput = {
+  name: string
+  logoUrl: string | null
+  shortDescription: string | null
+  website: string | null
+  location: string | null
+}
+
+export type CompanyProfileValidationErrorCode =
+  | "company_name_length"
+  | "invalid_logo_url"
+  | "short_description_length"
+  | "invalid_website"
+  | "company_location_length"
+  | "invalid_company_profile"
 
 export function toCompanySlug(value: string) {
   return value
@@ -35,7 +91,10 @@ export async function listCompanies() {
       id: companies.id,
       name: companies.name,
       slug: companies.slug,
+      logoUrl: companies.logoUrl,
+      shortDescription: companies.shortDescription,
       website: companies.website,
+      location: companies.location,
       plan: companies.plan,
       planOverride: companies.planOverride
     })
@@ -73,16 +132,88 @@ export function normalizeCompanyWebsite(value: string) {
   }
 }
 
+export function parseCompanyProfileInput(input: unknown) {
+  const result = companyProfileInputSchema.safeParse(input)
+
+  if (!result.success) {
+    return result
+  }
+
+  return {
+    success: true as const,
+    data: {
+      name: result.data.name.trim(),
+      logoUrl: result.data.logoUrl ?? null,
+      shortDescription: result.data.shortDescription ?? null,
+      website: result.data.website ?? null,
+      location: result.data.location ?? null
+    }
+  }
+}
+
+export function getCompanyProfileValidationErrorCode(error: z.ZodError): CompanyProfileValidationErrorCode {
+  const code = error.issues[0]?.message
+
+  if (
+    code === "company_name_length" ||
+    code === "invalid_logo_url" ||
+    code === "short_description_length" ||
+    code === "invalid_website" ||
+    code === "company_location_length"
+  ) {
+    return code
+  }
+
+  return "invalid_company_profile"
+}
+
+export function canManageCompanyProfile(viewer: CompanyProfileViewer, ownerAuthId: string) {
+  return viewer.isAdmin || viewer.id === ownerAuthId
+}
+
+export function getCompanyProfileInitials(name: string) {
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("") || "HS"
+}
+
+export function buildCompanyProfilePageDescription(input: {
+  name: string
+  shortDescription?: string | null
+  location?: string | null
+  activeJobCount: number
+}) {
+  const description = input.shortDescription?.trim()
+  const location = input.location?.trim()
+  const activity =
+    input.activeJobCount > 0
+      ? `${input.name} currently has ${input.activeJobCount} active ${input.activeJobCount === 1 ? "job" : "jobs"} on HireSalem.`
+      : `${input.name} is listed on HireSalem. Check back for new Salem-area openings from this employer.`
+
+  const source = [description, location ? `Based in ${location}.` : null, activity].filter(Boolean).join(" ")
+
+  return snippet(source, `${input.name} company profile on HireSalem.`, 155)
+}
+
 export async function updateCompanyProfile(input: {
   id: string
   name: string
+  logoUrl: string | null
+  shortDescription: string | null
   website: string | null
+  location: string | null
 }) {
   const [updated] = await db
     .update(companies)
     .set({
       name: input.name,
-      website: input.website
+      logoUrl: input.logoUrl,
+      shortDescription: input.shortDescription,
+      website: input.website,
+      location: input.location
     })
     .where(eq(companies.id, input.id))
     .returning()

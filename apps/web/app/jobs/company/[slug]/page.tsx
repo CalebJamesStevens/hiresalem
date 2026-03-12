@@ -3,10 +3,10 @@ import { notFound } from "next/navigation"
 
 import { Breadcrumbs } from "@/components/breadcrumbs"
 import { JsonLd } from "@/components/json-ld"
-import { getCompanyBySlug } from "@/lib/companies"
+import { buildCompanyProfilePageDescription, getCompanyBySlug, getCompanyProfileInitials } from "@/lib/companies"
 import { categoryOptions } from "@/lib/job-search"
 import { listActiveJobsForCompany } from "@/lib/jobs"
-import { buildPageMetadata, snippet } from "@/lib/seo"
+import { buildPageMetadata } from "@/lib/seo"
 import { getJobHubLinksForContext } from "@/lib/seo-taxonomy"
 import { buildCompanyJobsPath } from "@/lib/site-paths"
 import {
@@ -37,6 +37,23 @@ function formatList(values: string[]) {
   return `${values.slice(0, -1).join(", ")}, and ${values.at(-1)}`
 }
 
+function getCompanyIntroText(input: {
+  name: string
+  shortDescription?: string | null
+  location?: string | null
+  activeJobCount: number
+}) {
+  if (input.shortDescription?.trim()) {
+    return input.shortDescription.trim()
+  }
+
+  if (input.location?.trim()) {
+    return `${input.name} is based in ${input.location.trim()} and uses HireSalem to share local hiring opportunities.`
+  }
+
+  return `${input.name} uses HireSalem to share local hiring opportunities and keep candidates up to date on active openings.`
+}
+
 export async function generateMetadata({ params }: CompanyPageProps) {
   const { slug } = await params
   const company = await getCompanyBySlug(slug)
@@ -54,22 +71,12 @@ export async function generateMetadata({ params }: CompanyPageProps) {
   }
 
   const companyJobs = await listActiveJobsForCompany(company.id)
-  const categories = Array.from(
-    new Set(
-      companyJobs
-        .map((job) => categoryOptions.find((option) => option.value === job.category)?.label)
-        .filter((value): value is Exclude<typeof value, undefined> => value !== undefined)
-    )
-  ).slice(0, 3)
-  const description = snippet(
-    companyJobs.length > 0
-      ? `${company.name} has ${companyJobs.length} active ${companyJobs.length === 1 ? "job" : "jobs"} on HireSalem${
-          categories.length > 0 ? ` across ${formatList(categories)}` : ""
-        }. Browse live local openings and employer-specific hiring updates in Salem, Oregon.`
-      : `${company.name} is listed on HireSalem. Check back for new Salem-area openings from this employer.`,
-    `${company.name} jobs on HireSalem.`,
-    155
-  )
+  const description = buildCompanyProfilePageDescription({
+    name: company.name,
+    shortDescription: company.shortDescription,
+    location: company.location,
+    activeJobCount: companyJobs.length
+  })
 
   return buildPageMetadata({
     title: `${company.name} jobs in Salem Oregon`,
@@ -129,7 +136,9 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
           buildCompanyOrganizationJsonLd({
             name: company.name,
             path: companyPath,
-            website: company.website
+            website: company.website,
+            logoUrl: company.logoUrl,
+            description: company.shortDescription
           }),
           buildCollectionPageJsonLd({
             name: `${company.name} jobs`,
@@ -145,25 +154,44 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
 
       <section className="space-y-4 rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
         <Breadcrumbs items={breadcrumbs} />
-        <div className="space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight text-slate-950 md:text-4xl">{company.name}</h1>
-          <p className="max-w-3xl text-base leading-7 text-slate-700">
-            {company.name} currently has {companyJobs.length} active {companyJobs.length === 1 ? "job" : "jobs"} on HireSalem. Use this page to
-            browse the employer&apos;s live openings, then compare them with broader Salem hiring paths.
-          </p>
-          {categories.length > 0 ? (
-            <p className="max-w-3xl text-sm leading-7 text-slate-600">
-              Current openings on this page span {formatList(categories.slice(0, 4))}, which makes this a useful employer hub for Salem-area
-              candidates comparing role families as well as a specific company.
-            </p>
-          ) : null}
-          {company.website ? (
-            <p className="text-slate-600">
-              <Link href={company.website} className="underline underline-offset-4" target="_blank" rel="noreferrer">
-                {company.website}
-              </Link>
-            </p>
-          ) : null}
+        <div className="flex flex-col gap-6 md:flex-row md:items-start">
+          {company.logoUrl ? (
+            <img src={company.logoUrl} alt={`${company.name} logo`} className="h-20 w-20 rounded-2xl border border-slate-200 object-cover" />
+          ) : (
+            <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-slate-900 text-xl font-semibold text-white">
+              {getCompanyProfileInitials(company.name)}
+            </div>
+          )}
+
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <h1 className="text-3xl font-bold tracking-tight text-slate-950 md:text-4xl">{company.name}</h1>
+              <p className="max-w-3xl text-base leading-7 text-slate-700">
+                {getCompanyIntroText({
+                  name: company.name,
+                  shortDescription: company.shortDescription,
+                  location: company.location,
+                  activeJobCount: companyJobs.length
+                })}
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-2 text-sm text-slate-600">
+              {company.location ? <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1">{company.location}</span> : null}
+              <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1">
+                {companyJobs.length === 1 ? "1 active role" : `${companyJobs.length.toLocaleString()} active roles`}
+              </span>
+              {categories.length > 0 ? <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1">{formatList(categories.slice(0, 3))}</span> : null}
+            </div>
+
+            {company.website ? (
+              <p className="text-slate-600">
+                <Link href={company.website} className="underline underline-offset-4" target="_blank" rel="noreferrer">
+                  Visit company website
+                </Link>
+              </p>
+            ) : null}
+          </div>
         </div>
       </section>
 

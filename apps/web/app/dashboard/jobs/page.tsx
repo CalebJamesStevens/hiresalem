@@ -1,10 +1,12 @@
 import Link from "next/link"
 
 import { JobModerationActions } from "@/components/job-moderation-actions"
+import { getCompanyByOwnerAuthId } from "@/lib/companies"
 import { hasRole } from "@/lib/authz"
-import { getJobStatusLabel, isJobExpired } from "@/lib/job-listing-billing"
+import { getEmployerJobLifecycleStatus, getJobStatusLabel, isJobExpired, isJobPublished } from "@/lib/job-listing-billing"
 import { listEmployerApplicantJobs } from "@/lib/applicants"
 import { requirePageRoles } from "@/lib/page-auth"
+import { resolveCompanyPlan } from "@repo/db/plans"
 
 export const dynamic = "force-dynamic"
 
@@ -18,10 +20,17 @@ export default async function DashboardJobsPage({ searchParams }: DashboardJobsP
   const params = await searchParams
   const user = await requirePageRoles(["business", "admin"], "/dashboard/jobs")
   const isAdmin = hasRole(user.roles, "admin")
-  const jobs = await listEmployerApplicantJobs({
-    id: user.id,
-    isAdmin
-  })
+  const [jobs, company] = await Promise.all([
+    listEmployerApplicantJobs({
+      id: user.id,
+      isAdmin
+    }),
+    isAdmin ? Promise.resolve(null) : getCompanyByOwnerAuthId(user.id)
+  ])
+  const resolvedPlan = company ? resolveCompanyPlan(company) : null
+  const activeJobsCount = jobs.filter((job) => getEmployerJobLifecycleStatus(job) === "live").length
+  const activeJobsLimit = resolvedPlan?.entitlements.maxActiveJobs ?? null
+  const publishLimitReached = activeJobsLimit !== null && activeJobsCount >= activeJobsLimit
 
   return (
     <section className="space-y-4">
@@ -43,6 +52,25 @@ export default async function DashboardJobsPage({ searchParams }: DashboardJobsP
         </p>
       ) : null}
 
+      {!isAdmin && resolvedPlan ? (
+        <div className="rounded border border-slate-200 bg-white p-4 text-sm text-slate-700">
+          <p>
+            Current plan: <span className="font-medium text-slate-900">{resolvedPlan.label}</span>
+          </p>
+          <p className="mt-1">
+            Live jobs:{" "}
+            <span className="font-medium text-slate-900">
+              {activeJobsCount}
+              {activeJobsLimit !== null ? ` / ${activeJobsLimit}` : ""}
+            </span>
+          </p>
+          <p className="mt-1">Free-plan jobs publish with standard visibility and use the standard listing duration.</p>
+          {publishLimitReached ? (
+            <p className="mt-2 text-amber-700">You’ve reached the Free plan limit. Close one live job before publishing another draft.</p>
+          ) : null}
+        </div>
+      ) : null}
+
       {jobs.length === 0 ? <p className="text-slate-600">No jobs found.</p> : null}
 
       <div className="space-y-3">
@@ -56,14 +84,18 @@ export default async function DashboardJobsPage({ searchParams }: DashboardJobsP
                 <p className="text-sm text-slate-600">
                   {job.location ?? "Salem, OR"} • {job.applyType} • {getJobStatusLabel(job)}
                 </p>
-                {job.expiresAt ? <p className="text-sm text-slate-600">Paid through {job.expiresAt.toLocaleDateString()}</p> : null}
+                {job.expiresAt && isJobPublished(job) ? <p className="text-sm text-slate-600">Live until {job.expiresAt.toLocaleDateString()}</p> : null}
                 <p className="text-sm text-slate-600">
                   <Link href={`/dashboard/applicants?jobId=${job.id}`} className="underline">
                     {job.applicationCount} applicant{job.applicationCount === 1 ? "" : "s"}
                   </Link>
                 </p>
               </div>
-              <JobModerationActions jobId={job.id} isActive={job.isActive} canReopen={job.paymentStatus === "paid" && !isJobExpired(job)} />
+              <JobModerationActions
+                jobId={job.id}
+                jobStatus={getEmployerJobLifecycleStatus(job)}
+                canActivate={job.paymentStatus === "paid" && !isJobExpired(job) && (!publishLimitReached || job.isActive)}
+              />
             </div>
           </article>
         ))}

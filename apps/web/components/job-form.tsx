@@ -5,10 +5,9 @@ import { useRef, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 
 import { MarkdownContent } from "@/components/markdown-content"
+import type { EmployerJobLifecycleStatus } from "@/lib/job-listing-billing"
 import { categoryOptions, employmentTypeOptions, salaryIntervalOptions, workModeOptions } from "@/lib/job-search"
 import {
-  calculateJobListingPrice,
-  formatJobListingPrice,
   JOB_LISTING_DEFAULT_DAYS,
   JOB_LISTING_MAX_DAYS,
   JOB_LISTING_MIN_DAYS
@@ -130,7 +129,15 @@ export function JobForm({
   isAdmin = false,
   existingCompanies = [],
   initialValues = null,
-  postingCompanyName = null
+  postingCompanyName = null,
+  canSaveDraft = false,
+  canPublish = true,
+  publishDisabledMessage = null,
+  fixedListingDurationDays = null,
+  activeJobsCount = 0,
+  activeJobsLimit = null,
+  planLabel = null,
+  initialStatus = null
 }: {
   disabled?: boolean
   requiresPayment?: boolean
@@ -138,6 +145,14 @@ export function JobForm({
   existingCompanies?: ExistingCompany[]
   initialValues?: JobFormInitialValues | null
   postingCompanyName?: string | null
+  canSaveDraft?: boolean
+  canPublish?: boolean
+  publishDisabledMessage?: string | null
+  fixedListingDurationDays?: number | null
+  activeJobsCount?: number
+  activeJobsLimit?: number | null
+  planLabel?: string | null
+  initialStatus?: EmployerJobLifecycleStatus | null
 }) {
   const router = useRouter()
   const formRef = useRef<HTMLFormElement>(null)
@@ -148,9 +163,10 @@ export function JobForm({
   const [applyType, setApplyType] = useState<ApplyType>(initialValues?.applyType ?? "onsite")
   const [workMode, setWorkMode] = useState<"" | "onsite" | "hybrid" | "remote">(initialValues?.workMode ?? "")
   const [companySelection, setCompanySelection] = useState<CompanySelection>(isAdmin ? (initialValues?.companyId ?? "") : "")
-  const [listingDurationDays, setListingDurationDays] = useState(initialValues?.listingDurationDays ?? JOB_LISTING_DEFAULT_DAYS)
+  const [listingDurationDays, setListingDurationDays] = useState(fixedListingDurationDays ?? initialValues?.listingDurationDays ?? JOB_LISTING_DEFAULT_DAYS)
   const [isPending, startTransition] = useTransition()
-  const listingTotal = formatJobListingPrice(calculateJobListingPrice(listingDurationDays))
+  const effectiveListingDurationDays = fixedListingDurationDays ?? listingDurationDays
+  const showsDraftControls = canSaveDraft && (!isEditing || initialStatus === "draft")
 
   function onPreview() {
     if (!formRef.current || disabled) {
@@ -167,6 +183,7 @@ export function JobForm({
 
     startTransition(async () => {
       setStatus(isEditing ? "Saving..." : "Submitting...")
+      const submissionAction = String(formData.get("submissionAction") ?? (showsDraftControls ? "publish" : "save"))
 
       const nextApplyType = String(formData.get("applyType") ?? "onsite") as ApplyType
       const applyUrl = String(formData.get("applyUrl") ?? "").trim()
@@ -192,11 +209,12 @@ export function JobForm({
         description: String(formData.get("description") ?? ""),
         applyType: nextApplyType,
         applyUrl: nextApplyType === "external" ? applyUrl : undefined,
-        listingDurationDays: String(formData.get("listingDurationDays") ?? JOB_LISTING_DEFAULT_DAYS),
+        listingDurationDays: String(formData.get("listingDurationDays") ?? effectiveListingDurationDays),
         companyId: companySelection && !isNewCompany ? companySelection : undefined,
         newCompanyName: isNewCompany ? String(formData.get("newCompanyName") ?? "") : undefined,
         newCompanyWebsite: isNewCompany ? String(formData.get("newCompanyWebsite") ?? "") : undefined,
-        website: String(formData.get("website") ?? "")
+        website: String(formData.get("website") ?? ""),
+        submissionAction
       }
 
       const response = await fetch(isEditing && editingJobId ? `/api/jobs/${editingJobId}` : "/api/jobs", {
@@ -206,15 +224,10 @@ export function JobForm({
       })
 
       if (response.ok) {
-        const body = (await response.json().catch(() => ({}))) as { checkoutUrl?: string }
-
-        if (body.checkoutUrl) {
-          window.location.assign(body.checkoutUrl)
-          return
-        }
-
-        setStatus(isEditing ? "Job updated." : "Job posted.")
-        router.push(isEditing ? "/dashboard/jobs" : "/dashboard/jobs")
+        setStatus(
+          submissionAction === "draft" ? "Draft saved." : isEditing && initialStatus === "draft" ? "Job published." : isEditing ? "Job updated." : "Job posted."
+        )
+        router.push("/dashboard/jobs")
         router.refresh()
         return
       }
@@ -286,6 +299,19 @@ export function JobForm({
           </div>
         ) : postingCompanyName ? (
           <p className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">Posting as {postingCompanyName}.</p>
+        ) : null}
+
+        {!isAdmin && planLabel ? (
+          <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+            <p>
+              Current plan: <span className="font-medium text-slate-900">{planLabel}</span>
+            </p>
+            {activeJobsLimit !== null ? (
+              <p className="mt-1">
+                Live jobs: {activeJobsCount} / {activeJobsLimit}
+              </p>
+            ) : null}
+          </div>
         ) : null}
 
         <div className="space-y-1">
@@ -535,11 +561,11 @@ export function JobForm({
             type="number"
             min={JOB_LISTING_MIN_DAYS}
             max={JOB_LISTING_MAX_DAYS}
-            value={listingDurationDays}
-            readOnly={isEditing}
+            value={effectiveListingDurationDays}
+            readOnly={isEditing || fixedListingDurationDays !== null}
             disabled={disabled}
             onChange={(event) => {
-              if (isEditing) {
+              if (isEditing || fixedListingDurationDays !== null) {
                 return
               }
 
@@ -549,10 +575,12 @@ export function JobForm({
             }}
             className="w-full rounded border px-3 py-2"
           />
-          {isEditing ? (
+          {fixedListingDurationDays !== null ? (
+            <p className="text-sm text-slate-600">Free-plan listings run for {fixedListingDurationDays} days. Longer durations are not available on this plan.</p>
+          ) : isEditing ? (
             <p className="text-sm text-slate-600">Listing duration stays fixed after posting. Edit the content without changing billing.</p>
           ) : requiresPayment ? (
-            <p className="text-sm text-slate-600">Businesses are charged $5/day. Total due today: {listingTotal}.</p>
+            <p className="text-sm text-slate-600">Businesses are charged per day for this listing.</p>
           ) : null}
         </div>
 
@@ -596,8 +624,25 @@ export function JobForm({
           <button type="button" onClick={onPreview} disabled={isPending || disabled} className="rounded border px-4 py-2 text-sm font-medium">
             Preview
           </button>
-          <button type="submit" disabled={isPending || disabled} className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white">
-            {isPending ? "Working..." : isEditing ? "Save changes" : "Post job"}
+          {showsDraftControls ? (
+            <button
+              type="submit"
+              name="submissionAction"
+              value="draft"
+              disabled={isPending || disabled}
+              className="rounded border px-4 py-2 text-sm font-medium"
+            >
+              {isPending ? "Working..." : "Save draft"}
+            </button>
+          ) : null}
+          <button
+            type="submit"
+            name="submissionAction"
+            value={showsDraftControls ? "publish" : "save"}
+            disabled={isPending || disabled || (showsDraftControls && !canPublish)}
+            className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isPending ? "Working..." : showsDraftControls ? "Publish job" : isEditing ? "Save changes" : "Post job"}
           </button>
           {isEditing && initialValues ? (
             <Link href={`/jobs/${initialValues.slug}`} className="text-sm text-slate-600 underline underline-offset-4">
@@ -606,6 +651,7 @@ export function JobForm({
           ) : null}
           {status ? <p className="text-sm text-slate-600">{status}</p> : null}
         </div>
+        {showsDraftControls && publishDisabledMessage ? <p className="text-sm text-amber-700">{publishDisabledMessage}</p> : null}
       </form>
 
       {preview ? (

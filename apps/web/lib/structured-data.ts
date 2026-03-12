@@ -133,13 +133,21 @@ export function buildOrganizationJsonLd() {
   }
 }
 
-export function buildCompanyOrganizationJsonLd(input: { name: string; path: string; website?: string | null }) {
+export function buildCompanyOrganizationJsonLd(input: {
+  name: string
+  path: string
+  website?: string | null
+  logoUrl?: string | null
+  description?: string | null
+}) {
   return {
     "@context": "https://schema.org",
     "@type": "Organization",
     "@id": absoluteUrl(`${input.path}#organization`),
     name: input.name,
     url: absoluteUrl(input.path),
+    description: input.description ?? undefined,
+    logo: input.logoUrl ?? undefined,
     sameAs: input.website ? [input.website] : undefined
   }
 }

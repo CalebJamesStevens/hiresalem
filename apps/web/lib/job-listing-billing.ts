@@ -16,7 +16,10 @@ type JobPublicationFields = {
   isActive: boolean
   paymentStatus: JobPaymentStatus
   expiresAt: Date | null
+  activatedAt?: Date | null
 }
+
+export type EmployerJobLifecycleStatus = "draft" | "live" | "closed" | "expired" | "pending_payment" | "payment_canceled"
 
 export function calculateJobListingPrice(days: number) {
   return JOB_LISTING_PRICE_PER_DAY_CENTS * days
@@ -49,24 +52,43 @@ export function isJobExpired(job: Pick<JobPublicationFields, "paymentStatus" | "
   return Boolean(job.expiresAt && job.expiresAt.getTime() <= now.getTime())
 }
 
-export function getJobStatusLabel(job: JobPublicationFields, now = new Date()) {
+export function getEmployerJobLifecycleStatus(job: JobPublicationFields, now = new Date()): EmployerJobLifecycleStatus {
   if (job.paymentStatus === "pending") {
-    return "Pending payment"
+    return "pending_payment"
   }
 
   if (job.paymentStatus === "canceled") {
-    return "Payment canceled"
+    return "payment_canceled"
   }
 
   if (isJobExpired(job, now)) {
-    return "Expired"
+    return "expired"
+  }
+
+  if (!job.isActive && !job.activatedAt && job.paymentStatus === "paid") {
+    return "draft"
   }
 
   if (!job.isActive) {
-    return "Closed"
+    return "closed"
   }
 
-  return "Active"
+  return "live"
+}
+
+export function getJobStatusLabel(job: JobPublicationFields, now = new Date()) {
+  const status = getEmployerJobLifecycleStatus(job, now)
+
+  const labelMap: Record<EmployerJobLifecycleStatus, string> = {
+    draft: "Draft",
+    live: "Live",
+    closed: "Closed",
+    expired: "Expired",
+    pending_payment: "Pending payment",
+    payment_canceled: "Payment canceled"
+  }
+
+  return labelMap[status]
 }
 
 export function getPublishedJobsFilter(now = new Date()) {

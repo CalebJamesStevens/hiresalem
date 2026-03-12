@@ -2,7 +2,20 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 
 import { hasRole } from "@/lib/authz"
-import { getCompanyById, getCompanyByOwnerAuthId, listCompanies, normalizeCompanyWebsite, updateCompanyProfile } from "@/lib/companies"
+import {
+  canManageCompanyProfile,
+  COMPANY_LOCATION_MAX_LENGTH,
+  COMPANY_LOGO_URL_MAX_LENGTH,
+  COMPANY_NAME_MAX_LENGTH,
+  COMPANY_SHORT_DESCRIPTION_MAX_LENGTH,
+  COMPANY_WEBSITE_MAX_LENGTH,
+  getCompanyById,
+  getCompanyByOwnerAuthId,
+  getCompanyProfileValidationErrorCode,
+  listCompanies,
+  parseCompanyProfileInput,
+  updateCompanyProfile
+} from "@/lib/companies"
 import { requirePageRoles } from "@/lib/page-auth"
 import { resolveCompanyPlan } from "@repo/db/plans"
 
@@ -10,6 +23,7 @@ type DashboardCompanyPageProps = {
   searchParams: Promise<{
     companyId?: string
     updated?: string
+    welcome?: string
     error?: string
   }>
 }
@@ -20,15 +34,31 @@ function getErrorMessage(error?: string) {
   }
 
   if (error === "company_name_length") {
-    return "Company name must be at least 2 characters."
+    return "Business name must be between 2 and 80 characters."
   }
 
   if (error === "invalid_website") {
     return "Website must be a valid URL."
   }
 
+  if (error === "invalid_logo_url") {
+    return "Logo URL must be a valid URL."
+  }
+
+  if (error === "short_description_length") {
+    return "Short description must be 280 characters or fewer."
+  }
+
+  if (error === "company_location_length") {
+    return "Location must be 120 characters or fewer."
+  }
+
   if (error === "forbidden") {
     return "You do not have permission to edit that company."
+  }
+
+  if (error === "invalid_company_profile") {
+    return "Unable to save the company profile. Check the fields and try again."
   }
 
   return null
@@ -50,7 +80,7 @@ export default async function DashboardCompanyPage({ searchParams }: DashboardCo
     redirect("/become-business")
   }
 
-  if (!isAdmin && editableCompany?.ownerAuthId !== user.id) {
+  if (editableCompany && !canManageCompanyProfile({ id: user.id, isAdmin }, editableCompany.ownerAuthId)) {
     redirect("/dashboard/company?error=forbidden")
   }
 
@@ -60,8 +90,14 @@ export default async function DashboardCompanyPage({ searchParams }: DashboardCo
     <section className="mx-auto max-w-2xl space-y-6">
       <div className="space-y-2">
         <h1 className="text-2xl font-bold">Company profile</h1>
-        <p className="text-slate-600">Update the public company name and website tied to your HireSalem jobs.</p>
+        <p className="text-slate-600">Manage the Free-plan business profile job seekers see alongside your HireSalem openings.</p>
       </div>
+
+      {params.welcome === "1" ? (
+        <p className="rounded border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          Business setup is complete. Your Free plan profile is live and ready to edit.
+        </p>
+      ) : null}
 
       {params.updated === "1" ? (
         <p className="rounded border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">Company profile updated.</p>
@@ -99,9 +135,6 @@ export default async function DashboardCompanyPage({ searchParams }: DashboardCo
             const user = await requirePageRoles(["business", "admin"], "/dashboard/company")
             const isAdmin = hasRole(user.roles, "admin")
             const companyId = String(formData.get("companyId") ?? "").trim()
-            const name = String(formData.get("name") ?? "").trim()
-            const websiteInput = String(formData.get("website") ?? "")
-            const website = normalizeCompanyWebsite(websiteInput)
 
             if (!companyId) {
               redirect("/dashboard/company?error=company_not_found")
@@ -113,22 +146,26 @@ export default async function DashboardCompanyPage({ searchParams }: DashboardCo
               redirect("/dashboard/company?error=company_not_found")
             }
 
-            if (!isAdmin && company.ownerAuthId !== user.id) {
+            if (!canManageCompanyProfile({ id: user.id, isAdmin }, company.ownerAuthId)) {
               redirect("/dashboard/company?error=forbidden")
             }
 
-            if (name.length < 2) {
-              redirect(`/dashboard/company?companyId=${company.id}&error=company_name_length`)
-            }
+            const parsed = parseCompanyProfileInput({
+              name: String(formData.get("name") ?? ""),
+              logoUrl: String(formData.get("logoUrl") ?? ""),
+              shortDescription: String(formData.get("shortDescription") ?? ""),
+              website: String(formData.get("website") ?? ""),
+              location: String(formData.get("location") ?? "")
+            })
 
-            if (websiteInput.trim() && !website) {
-              redirect(`/dashboard/company?companyId=${company.id}&error=invalid_website`)
+            if (!parsed.success) {
+              const error = getCompanyProfileValidationErrorCode(parsed.error)
+              redirect(`/dashboard/company?companyId=${company.id}&error=${error}`)
             }
 
             await updateCompanyProfile({
               id: company.id,
-              name,
-              website
+              ...parsed.data
             })
 
             redirect(`/dashboard/company?companyId=${company.id}&updated=1`)
@@ -139,9 +176,48 @@ export default async function DashboardCompanyPage({ searchParams }: DashboardCo
 
           <div className="space-y-1">
             <label htmlFor="name" className="text-sm font-medium">
-              Company name
+              Business name
             </label>
-            <input id="name" name="name" required defaultValue={editableCompany.name} className="w-full rounded border px-3 py-2" />
+            <input
+              id="name"
+              name="name"
+              required
+              maxLength={COMPANY_NAME_MAX_LENGTH}
+              defaultValue={editableCompany.name}
+              className="w-full rounded border px-3 py-2"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="logoUrl" className="text-sm font-medium">
+              Logo URL
+            </label>
+            <input
+              id="logoUrl"
+              name="logoUrl"
+              type="url"
+              maxLength={COMPANY_LOGO_URL_MAX_LENGTH}
+              defaultValue={editableCompany.logoUrl ?? ""}
+              placeholder="https://example.com/logo.png"
+              className="w-full rounded border px-3 py-2"
+            />
+            <p className="text-xs text-slate-500">Free plan logos use a single hosted image URL.</p>
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="shortDescription" className="text-sm font-medium">
+              Short description
+            </label>
+            <textarea
+              id="shortDescription"
+              name="shortDescription"
+              rows={4}
+              maxLength={COMPANY_SHORT_DESCRIPTION_MAX_LENGTH}
+              defaultValue={editableCompany.shortDescription ?? ""}
+              placeholder="What does your business do, and what kind of work environment can candidates expect?"
+              className="w-full rounded border px-3 py-2"
+            />
+            <p className="text-xs text-slate-500">Keep it concise. This is the main summary shown on your public company page.</p>
           </div>
 
           <div className="space-y-1">
@@ -152,25 +228,41 @@ export default async function DashboardCompanyPage({ searchParams }: DashboardCo
               id="website"
               name="website"
               type="url"
+              maxLength={COMPANY_WEBSITE_MAX_LENGTH}
               defaultValue={editableCompany.website ?? ""}
               placeholder="https://example.com"
               className="w-full rounded border px-3 py-2"
             />
           </div>
 
+          <div className="space-y-1">
+            <label htmlFor="location" className="text-sm font-medium">
+              City or area
+            </label>
+            <input
+              id="location"
+              name="location"
+              maxLength={COMPANY_LOCATION_MAX_LENGTH}
+              defaultValue={editableCompany.location ?? ""}
+              placeholder="Salem, OR"
+              className="w-full rounded border px-3 py-2"
+            />
+          </div>
+
           <div className="rounded border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+            {resolvedPlan ? (
+              <p>
+                Current plan: <span className="font-medium text-slate-900">{resolvedPlan.label}</span>
+                {resolvedPlan.source === "override" ? " (manual override active)" : ""}
+              </p>
+            ) : null}
+            <p className="mt-1">Free plan fields: business name, logo, short description, website, location, and your live job list.</p>
             <p>
               Public company URL:{" "}
               <Link href={`/jobs/company/${editableCompany.slug}`} className="underline">
                 /jobs/company/{editableCompany.slug}
               </Link>
             </p>
-            {isAdmin && resolvedPlan ? (
-              <p className="mt-1">
-                Current plan: {resolvedPlan.label}
-                {resolvedPlan.source === "override" ? " (manual override active)" : ""}
-              </p>
-            ) : null}
             <p className="mt-1">The company slug stays fixed so existing links do not break.</p>
           </div>
 
