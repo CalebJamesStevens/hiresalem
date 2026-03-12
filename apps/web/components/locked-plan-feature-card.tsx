@@ -6,7 +6,7 @@ import type { ResolvedCompanyPlan } from "@repo/db/plans"
 export function LockedPlanFeatureCard({
   plan,
   featureId,
-  href = "/dashboard/plan"
+  href = "/dashboard/plan#pricing"
 }: {
   plan: ResolvedCompanyPlan
   featureId: LockedCompanyFeatureId
@@ -19,12 +19,12 @@ export function LockedPlanFeatureCard({
   }
 
   return (
-    <article className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
-      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">Upgrade available</p>
-      <h3 className="mt-2 text-base font-semibold text-amber-950">{feature.label}</h3>
+    <article className="rounded-2xl border border-indigo-200 bg-indigo-50/40 p-5 text-sm text-slate-700">
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-indigo-700">Upgrade available</p>
+      <h3 className="mt-2 text-base font-semibold text-slate-950">{feature.label}</h3>
       <p className="mt-2">{feature.description}</p>
-      <p className="mt-3 font-medium text-amber-900">{feature.availabilityLabel}</p>
-      <p className="mt-2 text-amber-800">{MANUAL_UPGRADE_NOTE}</p>
+      <p className="mt-3 font-medium text-slate-900">{feature.availabilityLabel}</p>
+      <p className="mt-2 text-slate-600">{MANUAL_UPGRADE_NOTE}</p>
       <Link href={href} className="mt-3 inline-flex text-sm font-medium underline underline-offset-4">
         View plan details
       </Link>

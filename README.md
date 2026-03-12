@@ -34,6 +34,9 @@ Copy `.env.example` to `.env` and set real values:
 - `NEXT_PUBLIC_APP_URL` (recommended for Stripe redirects)
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`
+- `STRIPE_ENHANCED_PROFILE_PRICE_ID`
+- `STRIPE_FEATURED_JOB_PRICE_ID`
+- `STRIPE_BUSINESS_PRO_PRICE_ID`
 - `GOOGLE_INDEXING_API_SERVICE_ACCOUNT_JSON` or both `GOOGLE_INDEXING_API_CLIENT_EMAIL` + `GOOGLE_INDEXING_API_PRIVATE_KEY` (optional, recommended for job URL indexing)
 - `CRON_SECRET` (required if you want cron endpoints protected)
 
@@ -73,9 +76,17 @@ Business plans foundation:
 - public company pages only render those richer sections when the effective plan allows them; stored enhanced fields stay hidden on Free
 - Featured Job and Business Pro unlock a featured checkbox on employer job forms, a featured quick action in `/dashboard/jobs`, and boosted ordering on supported public job-listing surfaces
 - featured visibility stays controlled by the company entitlement at render time, so jobs lose public boosting automatically if the business is downgraded later
-- employers can review their current plan, included capabilities, and upgrade-only capabilities at `/dashboard/plan`
+- employers can review their current plan, compare paid options, start checkout, and manage subscriptions at `/dashboard/plan`
+- self-serve billing uses Stripe subscriptions and updates the company base plan from webhook-driven syncs
+- admin/manual overrides still work; they layer on top of the billing-driven base plan for support or pilot situations
 - admins can manually assign pilot plans and override notes for businesses at `/admin/businesses`
-- upgrade prompts are intentionally simple and point back to manual/internal enablement until billing is integrated
+
+Stripe subscription setup:
+
+- configure the three plan price IDs above for Enhanced Profile, Featured Job, and Business Pro
+- the app maps those Stripe price IDs back into internal plan IDs in [`apps/web/lib/company-billing.ts`](/Users/caleb/repos/hiresalem/apps/web/lib/company-billing.ts)
+- `/api/stripe/webhooks` now needs the existing checkout events plus `customer.subscription.created`, `customer.subscription.updated`, and `customer.subscription.deleted`
+- the Stripe customer portal should be enabled if you want businesses to self-serve plan changes or cancellations after the initial checkout
 
 ## Commands
 

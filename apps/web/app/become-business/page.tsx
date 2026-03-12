@@ -14,7 +14,8 @@ import {
   parseCompanyProfileInput,
   updateCompanyProfile
 } from "@/lib/companies"
-import { hasAnyRole, normalizeRoles } from "@/lib/authz"
+import { normalizeRoles } from "@/lib/authz"
+import { getBusinessOnboardingRedirectPath, shouldGrantBusinessRole } from "@/lib/business-onboarding"
 import { db } from "@/lib/db"
 import { grantRealmRoleToUserInKeycloak } from "@/lib/keycloak"
 import { getSessionSafe } from "@/lib/session"
@@ -104,8 +105,11 @@ export default async function BecomeBusinessPage({ searchParams }: BecomeBusines
     redirect("/signin?callbackUrl=/become-business")
   }
 
-  if (hasAnyRole(roles, ["business", "admin"])) {
-    redirect("/dashboard/jobs")
+  const existingCompany = await getCompanyByOwnerAuthId(userId)
+  const redirectPath = getBusinessOnboardingRedirectPath(roles, Boolean(existingCompany))
+
+  if (redirectPath) {
+    redirect(redirectPath)
   }
 
   const message = errorMessage(params.error)
@@ -138,10 +142,6 @@ export default async function BecomeBusinessPage({ searchParams }: BecomeBusines
             redirect("/signin?callbackUrl=/become-business")
           }
 
-          if (hasAnyRole(roles, ["business", "admin"])) {
-            redirect("/dashboard/jobs")
-          }
-
           const parsed = parseCompanyProfileInput({
             name: String(formData.get("name") ?? ""),
             logoUrl: String(formData.get("logoUrl") ?? ""),
@@ -155,6 +155,12 @@ export default async function BecomeBusinessPage({ searchParams }: BecomeBusines
           }
 
           const existingCompany = await getCompanyByOwnerAuthId(userId)
+          const redirectPath = getBusinessOnboardingRedirectPath(roles, Boolean(existingCompany))
+
+          if (redirectPath) {
+            redirect(redirectPath)
+          }
+
           let companyId = existingCompany?.id ?? null
           const shouldDeleteCreatedCompany = !existingCompany
 
@@ -186,23 +192,25 @@ export default async function BecomeBusinessPage({ searchParams }: BecomeBusines
             redirect("/become-business")
           }
 
-          const roleResult = await grantRealmRoleToUserInKeycloak({
-            userId,
-            roleName: "business"
-          })
+          if (shouldGrantBusinessRole(roles)) {
+            const roleResult = await grantRealmRoleToUserInKeycloak({
+              userId,
+              roleName: "business"
+            })
 
-          if (!roleResult.ok) {
-            if (shouldDeleteCreatedCompany) {
-              await db.delete(companies).where(eq(companies.id, companyId))
+            if (!roleResult.ok) {
+              if (shouldDeleteCreatedCompany) {
+                await db.delete(companies).where(eq(companies.id, companyId))
+              }
+              redirect(`/become-business?error=${roleResult.reason}`)
             }
-            redirect(`/become-business?error=${roleResult.reason}`)
+
+            await unstable_update({
+              user: {
+                roles: normalizeRoles([...roles, "business"])
+              }
+            })
           }
-
-          await unstable_update({
-            user: {
-              roles: normalizeRoles([...roles, "business"])
-            }
-          })
 
           redirect("/dashboard/company?welcome=1")
         }}

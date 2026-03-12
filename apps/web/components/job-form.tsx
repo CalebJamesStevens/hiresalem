@@ -594,7 +594,7 @@ export function JobForm({
         </div>
 
         {canFeatureJob ? (
-          <div className="space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-4">
+          <div className="space-y-3 rounded-lg border border-indigo-200 bg-indigo-50/40 p-4">
             <div className="flex flex-wrap items-center gap-3">
               <FeaturedJobBadge inactive={!featuredPlacementEligible} />
               <p className="text-sm font-medium text-slate-900">Give this role stronger visibility on supported HireSalem listing surfaces.</p>
@@ -621,10 +621,10 @@ export function JobForm({
             ) : null}
           </div>
         ) : !isAdmin ? (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-            <p className="font-medium text-amber-950">Featured placement is locked on this plan.</p>
+          <div className="rounded-lg border border-indigo-200 bg-indigo-50/40 p-4 text-sm text-slate-700">
+            <p className="font-medium text-slate-950">Featured placement is locked on this plan.</p>
             <p className="mt-1">Add a featured badge and boosted placement with Featured Job or Business Pro.</p>
-            <Link href="/dashboard/plan" className="mt-3 inline-flex font-medium underline underline-offset-4">
+            <Link href="/dashboard/plan#pricing" className="mt-3 inline-flex font-medium underline underline-offset-4">
               View plan options
             </Link>
           </div>

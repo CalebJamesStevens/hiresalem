@@ -36,7 +36,7 @@ export default async function PostJobPage({ searchParams }: PostJobPageProps) {
     <section className="space-y-6">
       <h1 className="text-3xl font-bold">Post a job</h1>
       {!isAdmin && !company ? (
-        <p className="rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <p className="rounded border border-indigo-200 bg-indigo-50/40 px-4 py-3 text-sm text-slate-700">
           Finish your business setup before posting. <Link href="/become-business" className="underline">Create your company profile</Link>.
         </p>
       ) : company && resolvedPlan ? (

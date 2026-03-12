@@ -72,8 +72,8 @@ export default async function DashboardJobsPage({ searchParams }: DashboardJobsP
             </p>
             <p className="mt-1">
               Standard business listings stay available now, and richer profile or featured placement options can be enabled from{" "}
-              <Link href="/dashboard/plan" className="underline underline-offset-4">
-                your plan page
+              <Link href="/dashboard/plan#pricing" className="underline underline-offset-4">
+                your billing page
               </Link>
               .
             </p>

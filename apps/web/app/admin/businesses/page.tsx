@@ -43,7 +43,7 @@ export default async function AdminBusinessesPage({ searchParams }: AdminBusines
     <section className="space-y-6">
       <div className="space-y-2">
         <h1 className="text-2xl font-bold">Business plans</h1>
-        <p className="text-slate-600">Manually assign pilot plans, chamber trials, and override notes until billing is wired into the product.</p>
+        <p className="text-slate-600">Manage manual plan assignments, chamber trials, and override notes on top of the live self-serve billing flow.</p>
       </div>
 
       {params.updated === "1" ? (

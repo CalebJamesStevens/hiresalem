@@ -1,3 +1,4 @@
+import { syncCompanyBillingFromCheckoutSession, syncCompanyBillingFromStripeSubscription } from "@/lib/company-billing"
 import { activatePaidJobListing, markJobPaymentCanceledBySessionId } from "@/lib/job-billing"
 import { getStripe, getStripeWebhookSecret } from "@/lib/stripe"
 
@@ -41,11 +42,19 @@ export async function POST(req: Request) {
         stripePaymentIntentId: typeof session.payment_intent === "string" ? session.payment_intent : null
       })
     }
+
+    if (session.mode === "subscription") {
+      await syncCompanyBillingFromCheckoutSession(session, stripe)
+    }
   }
 
   if (event.type === "checkout.session.expired" || event.type === "checkout.session.async_payment_failed") {
     const session = event.data.object
     await markJobPaymentCanceledBySessionId(session.id)
+  }
+
+  if (event.type === "customer.subscription.created" || event.type === "customer.subscription.updated" || event.type === "customer.subscription.deleted") {
+    await syncCompanyBillingFromStripeSubscription(event.data.object)
   }
 
   return Response.json({ received: true })

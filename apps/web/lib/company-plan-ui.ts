@@ -1,6 +1,6 @@
 import { getCompanyPlanLabel, type CompanyPlanId, type ResolvedCompanyPlan } from "@repo/db/plans"
 
-export const MANUAL_UPGRADE_NOTE = "Contact HireSalem to upgrade manually while billing is still offline."
+export const MANUAL_UPGRADE_NOTE = "Upgrade from your billing page, or contact HireSalem if you need help with a pilot or manual change."
 
 export const companyProfileLockedFeatureIds = ["social_links", "enhanced_company_story", "company_media"] as const
 export const employerJobLockedFeatureIds = ["featured_job_visibility", "higher_job_limit"] as const

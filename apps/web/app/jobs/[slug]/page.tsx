@@ -206,6 +206,9 @@ export default async function JobPage({ params }: JobPageProps) {
     compensation ? { label: "Pay", value: compensation } : null,
     { label: "Posted", value: formatCalendarDate(postedAt) }
   ].filter((item): item is { label: string; value: string } => item !== null)
+  const featuredHeaderPillClassName = job.isFeatured
+    ? "rounded-full border border-slate-200 bg-white px-3 py-1"
+    : "rounded-full bg-slate-100 px-3 py-1"
   const jobPosting = buildEligibleJobPostingJsonLd({
     title: job.title,
     description: markdownToPlainText(job.description) || null,
@@ -243,14 +246,18 @@ export default async function JobPage({ params }: JobPageProps) {
         jobPosting.jsonLd ? <JsonLd data={jobPosting.jsonLd} /> : null
       ) : null}
 
-      <section className={`min-w-0 overflow-hidden rounded-[2rem] border p-6 shadow-sm ${job.isFeatured ? "border-amber-200 bg-amber-50/40" : "border-slate-200 bg-white"}`}>
+      <section
+        className={`min-w-0 overflow-hidden rounded-[2rem] border p-6 shadow-sm ${
+          job.isFeatured ? "border-indigo-200 bg-indigo-50/30 shadow-[0_12px_32px_-28px_rgba(37,99,235,0.45)]" : "border-slate-200 bg-white"
+        }`}
+      >
         <div className="min-w-0 space-y-4">
           <Breadcrumbs items={breadcrumbs} />
           <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
             {job.isFeatured ? <FeaturedJobBadge /> : null}
-            <span className="rounded-full bg-slate-100 px-3 py-1">{job.applyType === "onsite" ? "Apply in app" : "External apply"}</span>
-            <span className="rounded-full bg-slate-100 px-3 py-1">{statusLabel}</span>
-            {workModeLabel ? <span className="rounded-full bg-slate-100 px-3 py-1">{workModeLabel}</span> : null}
+            <span className={featuredHeaderPillClassName}>{job.applyType === "onsite" ? "Apply in app" : "External apply"}</span>
+            <span className={featuredHeaderPillClassName}>{statusLabel}</span>
+            {workModeLabel ? <span className={featuredHeaderPillClassName}>{workModeLabel}</span> : null}
           </div>
           <div className="min-w-0 space-y-2">
             <h1 className="break-words text-3xl font-bold tracking-tight text-slate-950 md:text-4xl">{job.title}</h1>

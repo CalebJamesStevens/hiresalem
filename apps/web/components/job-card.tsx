@@ -50,6 +50,7 @@ function formatSalary(job: PublicJobSearchResult) {
 export function JobCard({ job }: { job: PublicJobSearchResult }) {
   const description = markdownToPlainText(job.description) || "No description yet."
   const postedAt = job.activatedAt ?? job.createdAt
+  const isFeatured = job.isFeatured
   const meta = [
     job.workMode ? workModeOptions.find((option) => option.value === job.workMode)?.label : null,
     job.employmentType ? employmentTypeOptions.find((option) => option.value === job.employmentType)?.label : null,
@@ -58,10 +59,14 @@ export function JobCard({ job }: { job: PublicJobSearchResult }) {
   ].filter(Boolean)
 
   return (
-    <article className={`rounded-2xl border p-5 shadow-sm ${job.isFeatured ? "border-amber-200 bg-amber-50/50" : "bg-white"}`}>
+    <article
+      className={`border p-5 shadow-sm ${
+        isFeatured ? "rounded-[2rem] border-indigo-200 bg-indigo-50/30 shadow-[0_12px_32px_-28px_rgba(37,99,235,0.45)]" : "rounded-2xl border-slate-200 bg-white"
+      }`}
+    >
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div className="space-y-2">
-          {job.isFeatured ? <FeaturedJobBadge /> : null}
+          {isFeatured ? <FeaturedJobBadge /> : null}
           <div className="space-y-1">
             <h2 className="text-xl font-semibold text-slate-900">
               <Link href={`/jobs/${job.slug}`} className="underline underline-offset-4">
@@ -81,14 +86,19 @@ export function JobCard({ job }: { job: PublicJobSearchResult }) {
           {meta.length > 0 ? (
             <div className="flex flex-wrap gap-2">
               {meta.map((item) => (
-                <span key={item} className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
+                <span
+                  key={item}
+                  className={`rounded-full font-medium text-slate-700 ${
+                    isFeatured ? "border border-slate-200 bg-white px-3 py-1 text-xs" : "bg-slate-100 px-3 py-1 text-xs"
+                  }`}
+                >
                   {item}
                 </span>
               ))}
             </div>
           ) : null}
 
-          <p className="text-sm text-slate-700 line-clamp-3">{description}</p>
+          <p className="line-clamp-3 text-sm text-slate-700">{description}</p>
         </div>
 
         <div className="flex shrink-0 flex-col items-start gap-3 md:items-end">

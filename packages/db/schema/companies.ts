@@ -1,8 +1,19 @@
-import { pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core"
+import { boolean, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core"
 
 import { companyPlanIds } from "../plans"
 
 export const companyPlanEnum = pgEnum("company_plan", companyPlanIds)
+export const companyBillingStatusEnum = pgEnum("company_billing_status", [
+  "inactive",
+  "trialing",
+  "active",
+  "past_due",
+  "canceled",
+  "incomplete",
+  "incomplete_expired",
+  "unpaid",
+  "paused"
+])
 
 export const companies = pgTable("companies", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -25,6 +36,18 @@ export const companies = pgTable("companies", {
   plan: companyPlanEnum("plan").default("free").notNull(),
   planOverride: companyPlanEnum("plan_override"),
   planOverrideReason: text("plan_override_reason"),
+  billingPlan: companyPlanEnum("billing_plan"),
+  billingStatus: companyBillingStatusEnum("billing_status").default("inactive").notNull(),
+  billingCancelAtPeriodEnd: boolean("billing_cancel_at_period_end").default(false).notNull(),
+  billingCurrentPeriodEnd: timestamp("billing_current_period_end"),
+  billingUpdatedAt: timestamp("billing_updated_at"),
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
   planAssignedAt: timestamp("plan_assigned_at").defaultNow().notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull()
+}, (table) => {
+  return {
+    stripeCustomerIdIdx: uniqueIndex("companies_stripe_customer_id_idx").on(table.stripeCustomerId),
+    stripeSubscriptionIdIdx: uniqueIndex("companies_stripe_subscription_id_idx").on(table.stripeSubscriptionId)
+  }
 })

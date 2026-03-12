@@ -25,7 +25,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         ) : null}
         {canManageJobs ? (
           <Link href="/dashboard/plan" className="rounded border bg-white px-3 py-2">
-            Plan
+            Plan & Billing
           </Link>
         ) : null}
         {canManageJobs ? (
