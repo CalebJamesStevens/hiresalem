@@ -56,3 +56,34 @@ export async function createUniqueCompanySlug(name: string) {
     suffix += 1
   }
 }
+
+export function normalizeCompanyWebsite(value: string) {
+  const trimmed = value.trim()
+
+  if (!trimmed) {
+    return null
+  }
+
+  try {
+    return new URL(trimmed).toString()
+  } catch {
+    return null
+  }
+}
+
+export async function updateCompanyProfile(input: {
+  id: string
+  name: string
+  website: string | null
+}) {
+  const [updated] = await db
+    .update(companies)
+    .set({
+      name: input.name,
+      website: input.website
+    })
+    .where(eq(companies.id, input.id))
+    .returning()
+
+  return updated ?? null
+}

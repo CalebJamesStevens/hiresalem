@@ -23,6 +23,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
             Applicants
           </Link>
         ) : null}
+        {canManageJobs ? (
+          <Link href="/dashboard/company" className="rounded border bg-white px-3 py-2">
+            Company Profile
+          </Link>
+        ) : null}
         {canViewApplications ? (
           <Link href="/dashboard/applications" className="rounded border bg-white px-3 py-2">
             My Applications

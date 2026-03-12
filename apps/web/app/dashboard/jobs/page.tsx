@@ -27,9 +27,14 @@ export default async function DashboardJobsPage({ searchParams }: DashboardJobsP
     <section className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{isAdmin ? "All jobs" : "Your jobs"}</h1>
-        <Link href="/post-job" className="rounded bg-slate-900 px-4 py-2 text-white">
-          Post new job
-        </Link>
+        <div className="flex flex-wrap gap-3">
+          <Link href="/dashboard/company" className="rounded border bg-white px-4 py-2">
+            Edit company
+          </Link>
+          <Link href="/post-job" className="rounded bg-slate-900 px-4 py-2 text-white">
+            Post new job
+          </Link>
+        </div>
       </div>
 
       {params.upgraded === "1" ? (
