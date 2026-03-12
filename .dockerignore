@@ -1,0 +1,6 @@
+.git
+.gitignore
+.DS_Store
+node_modules
+apps/web/.next
+packages/db/.DS_Store
