@@ -3,7 +3,7 @@ import { z } from "zod"
 
 import { db } from "@/lib/db"
 import { snippet } from "@/lib/seo"
-import { companyPlanIds, type CompanyPlanId } from "@repo/db/plans"
+import { companyPlanIds, resolveCompanyPlan, type CompanyPlanId, type ResolvedCompanyPlan } from "@repo/db/plans"
 import { companies } from "@repo/db/schema/companies"
 
 export type Company = typeof companies.$inferSelect
@@ -18,6 +18,25 @@ export const COMPANY_SHORT_DESCRIPTION_MAX_LENGTH = 280
 export const COMPANY_LOCATION_MAX_LENGTH = 120
 export const COMPANY_WEBSITE_MAX_LENGTH = 500
 export const COMPANY_PLAN_OVERRIDE_REASON_MAX_LENGTH = 500
+export const COMPANY_ENHANCED_TEXT_MAX_LENGTH = 5000
+export const COMPANY_MEDIA_URL_MAX_LENGTH = 500
+
+export const companySocialLinkFields = [
+  {
+    id: "linkedinUrl",
+    label: "LinkedIn"
+  },
+  {
+    id: "facebookUrl",
+    label: "Facebook"
+  },
+  {
+    id: "instagramUrl",
+    label: "Instagram"
+  }
+] as const
+
+type CompanySocialLinkField = (typeof companySocialLinkFields)[number]["id"]
 
 const optionalProfileTextField = (max: number, message: string) =>
   z.preprocess((value) => {
@@ -44,7 +63,16 @@ const companyProfileInputSchema = z.object({
   logoUrl: optionalProfileUrlField(COMPANY_LOGO_URL_MAX_LENGTH, "invalid_logo_url"),
   shortDescription: optionalProfileTextField(COMPANY_SHORT_DESCRIPTION_MAX_LENGTH, "short_description_length"),
   website: optionalProfileUrlField(COMPANY_WEBSITE_MAX_LENGTH, "invalid_website"),
-  location: optionalProfileTextField(COMPANY_LOCATION_MAX_LENGTH, "company_location_length")
+  location: optionalProfileTextField(COMPANY_LOCATION_MAX_LENGTH, "company_location_length"),
+  linkedinUrl: optionalProfileUrlField(COMPANY_WEBSITE_MAX_LENGTH, "invalid_linkedin_url"),
+  facebookUrl: optionalProfileUrlField(COMPANY_WEBSITE_MAX_LENGTH, "invalid_facebook_url"),
+  instagramUrl: optionalProfileUrlField(COMPANY_WEBSITE_MAX_LENGTH, "invalid_instagram_url"),
+  aboutSection: optionalProfileTextField(COMPANY_ENHANCED_TEXT_MAX_LENGTH, "about_section_length"),
+  whyWorkHere: optionalProfileTextField(COMPANY_ENHANCED_TEXT_MAX_LENGTH, "why_work_here_length"),
+  benefits: optionalProfileTextField(COMPANY_ENHANCED_TEXT_MAX_LENGTH, "benefits_length"),
+  coverImageUrl: optionalProfileUrlField(COMPANY_MEDIA_URL_MAX_LENGTH, "invalid_cover_image_url"),
+  galleryImageUrl1: optionalProfileUrlField(COMPANY_MEDIA_URL_MAX_LENGTH, "invalid_gallery_image_url"),
+  galleryImageUrl2: optionalProfileUrlField(COMPANY_MEDIA_URL_MAX_LENGTH, "invalid_gallery_image_url")
 })
 
 const companyPlanInputSchema = z.object({
@@ -68,6 +96,15 @@ export type CompanyProfileInput = {
   shortDescription: string | null
   website: string | null
   location: string | null
+  linkedinUrl: string | null
+  facebookUrl: string | null
+  instagramUrl: string | null
+  aboutSection: string | null
+  whyWorkHere: string | null
+  benefits: string | null
+  coverImageUrl: string | null
+  galleryImageUrl1: string | null
+  galleryImageUrl2: string | null
 }
 
 export type CompanyProfileValidationErrorCode =
@@ -76,9 +113,53 @@ export type CompanyProfileValidationErrorCode =
   | "short_description_length"
   | "invalid_website"
   | "company_location_length"
+  | "invalid_linkedin_url"
+  | "invalid_facebook_url"
+  | "invalid_instagram_url"
+  | "about_section_length"
+  | "why_work_here_length"
+  | "benefits_length"
+  | "invalid_cover_image_url"
+  | "invalid_gallery_image_url"
+  | "plan_locked_social_links"
+  | "plan_locked_enhanced_company_profile"
+  | "plan_locked_company_media"
   | "invalid_company_profile"
 
 export type CompanyPlanValidationErrorCode = "invalid_company_plan" | "plan_override_reason_length" | "invalid_company_plan_update"
+
+export type CompanySocialLink = {
+  id: CompanySocialLinkField
+  label: string
+  href: string
+}
+
+export type CompanyPublicProfileContent = {
+  shortDescription: string | null
+  aboutSection: string | null
+  whyWorkHere: string | null
+  benefits: string | null
+  socialLinks: CompanySocialLink[]
+  coverImageUrl: string | null
+  galleryImageUrls: string[]
+  usesEnhancedPresentation: boolean
+}
+
+function getCompanyEnhancedProfileAccess(plan?: Pick<ResolvedCompanyPlan, "entitlements"> | null) {
+  return {
+    allowsSocialLinks: Boolean(plan?.entitlements.allowsSocialLinks),
+    allowsEnhancedStory:
+      Boolean(plan?.entitlements.allowsExpandedAboutSection) &&
+      Boolean(plan?.entitlements.allowsWhyWorkHereSection) &&
+      Boolean(plan?.entitlements.allowsPerksAndBenefitsSection),
+    allowsCompanyMedia: Boolean(plan?.entitlements.allowsCompanyMediaGallery),
+    allowsHighlightedPresentation: Boolean(plan?.entitlements.allowsProfileHighlighting)
+  }
+}
+
+function hasAnyValue(values: Array<string | null | undefined>) {
+  return values.some((value) => typeof value === "string" && value.trim().length > 0)
+}
 
 export function toCompanySlug(value: string) {
   return value
@@ -165,9 +246,51 @@ export function parseCompanyProfileInput(input: unknown) {
       logoUrl: result.data.logoUrl ?? null,
       shortDescription: result.data.shortDescription ?? null,
       website: result.data.website ?? null,
-      location: result.data.location ?? null
+      location: result.data.location ?? null,
+      linkedinUrl: result.data.linkedinUrl ?? null,
+      facebookUrl: result.data.facebookUrl ?? null,
+      instagramUrl: result.data.instagramUrl ?? null,
+      aboutSection: result.data.aboutSection ?? null,
+      whyWorkHere: result.data.whyWorkHere ?? null,
+      benefits: result.data.benefits ?? null,
+      coverImageUrl: result.data.coverImageUrl ?? null,
+      galleryImageUrl1: result.data.galleryImageUrl1 ?? null,
+      galleryImageUrl2: result.data.galleryImageUrl2 ?? null
     }
   }
+}
+
+export function parseCompanyProfileInputForPlan(input: unknown, plan?: Pick<ResolvedCompanyPlan, "entitlements"> | null) {
+  const parsed = parseCompanyProfileInput(input)
+
+  if (!parsed.success) {
+    return parsed
+  }
+
+  const access = getCompanyEnhancedProfileAccess(plan)
+
+  if (!access.allowsSocialLinks && hasAnyValue([parsed.data.linkedinUrl, parsed.data.facebookUrl, parsed.data.instagramUrl])) {
+    return {
+      success: false as const,
+      errorCode: "plan_locked_social_links" as const
+    }
+  }
+
+  if (!access.allowsEnhancedStory && hasAnyValue([parsed.data.aboutSection, parsed.data.whyWorkHere, parsed.data.benefits])) {
+    return {
+      success: false as const,
+      errorCode: "plan_locked_enhanced_company_profile" as const
+    }
+  }
+
+  if (!access.allowsCompanyMedia && hasAnyValue([parsed.data.coverImageUrl, parsed.data.galleryImageUrl1, parsed.data.galleryImageUrl2])) {
+    return {
+      success: false as const,
+      errorCode: "plan_locked_company_media" as const
+    }
+  }
+
+  return parsed
 }
 
 export function getCompanyProfileValidationErrorCode(error: z.ZodError): CompanyProfileValidationErrorCode {
@@ -178,7 +301,15 @@ export function getCompanyProfileValidationErrorCode(error: z.ZodError): Company
     code === "invalid_logo_url" ||
     code === "short_description_length" ||
     code === "invalid_website" ||
-    code === "company_location_length"
+    code === "company_location_length" ||
+    code === "invalid_linkedin_url" ||
+    code === "invalid_facebook_url" ||
+    code === "invalid_instagram_url" ||
+    code === "about_section_length" ||
+    code === "why_work_here_length" ||
+    code === "benefits_length" ||
+    code === "invalid_cover_image_url" ||
+    code === "invalid_gallery_image_url"
   ) {
     return code
   }
@@ -231,10 +362,11 @@ export function getCompanyProfileInitials(name: string) {
 export function buildCompanyProfilePageDescription(input: {
   name: string
   shortDescription?: string | null
+  aboutSection?: string | null
   location?: string | null
   activeJobCount: number
 }) {
-  const description = input.shortDescription?.trim()
+  const description = input.shortDescription?.trim() || input.aboutSection?.trim()
   const location = input.location?.trim()
   const activity =
     input.activeJobCount > 0
@@ -253,6 +385,15 @@ export async function updateCompanyProfile(input: {
   shortDescription: string | null
   website: string | null
   location: string | null
+  linkedinUrl: string | null
+  facebookUrl: string | null
+  instagramUrl: string | null
+  aboutSection: string | null
+  whyWorkHere: string | null
+  benefits: string | null
+  coverImageUrl: string | null
+  galleryImageUrl1: string | null
+  galleryImageUrl2: string | null
 }) {
   const [updated] = await db
     .update(companies)
@@ -261,12 +402,78 @@ export async function updateCompanyProfile(input: {
       logoUrl: input.logoUrl,
       shortDescription: input.shortDescription,
       website: input.website,
-      location: input.location
+      location: input.location,
+      linkedinUrl: input.linkedinUrl,
+      facebookUrl: input.facebookUrl,
+      instagramUrl: input.instagramUrl,
+      aboutSection: input.aboutSection,
+      whyWorkHere: input.whyWorkHere,
+      benefits: input.benefits,
+      coverImageUrl: input.coverImageUrl,
+      galleryImageUrl1: input.galleryImageUrl1,
+      galleryImageUrl2: input.galleryImageUrl2
     })
     .where(eq(companies.id, input.id))
     .returning()
 
   return updated ?? null
+}
+
+export function getCompanyPublicProfileContent(
+  company: Pick<
+    Company,
+    | "shortDescription"
+    | "linkedinUrl"
+    | "facebookUrl"
+    | "instagramUrl"
+    | "aboutSection"
+    | "whyWorkHere"
+    | "benefits"
+    | "coverImageUrl"
+    | "galleryImageUrl1"
+    | "galleryImageUrl2"
+    | "plan"
+    | "planOverride"
+  >
+): CompanyPublicProfileContent {
+  const resolvedPlan = resolveCompanyPlan(company)
+  const access = getCompanyEnhancedProfileAccess(resolvedPlan)
+  const socialLinks: CompanySocialLink[] = access.allowsSocialLinks
+    ? companySocialLinkFields.reduce<CompanySocialLink[]>((links, field) => {
+        const href = company[field.id]
+
+        if (!href) {
+          return links
+        }
+
+        links.push({
+          id: field.id,
+          label: field.label,
+          href
+        })
+
+        return links
+      }, [])
+    : []
+
+  const aboutSection = access.allowsEnhancedStory ? company.aboutSection?.trim() || null : null
+  const whyWorkHere = access.allowsEnhancedStory ? company.whyWorkHere?.trim() || null : null
+  const benefits = access.allowsEnhancedStory ? company.benefits?.trim() || null : null
+  const coverImageUrl = access.allowsCompanyMedia ? company.coverImageUrl?.trim() || null : null
+  const galleryImageUrls = access.allowsCompanyMedia
+    ? [company.galleryImageUrl1, company.galleryImageUrl2].map((value) => value?.trim() || null).filter((value): value is string => Boolean(value))
+    : []
+
+  return {
+    shortDescription: company.shortDescription?.trim() || null,
+    aboutSection,
+    whyWorkHere,
+    benefits,
+    socialLinks,
+    coverImageUrl,
+    galleryImageUrls,
+    usesEnhancedPresentation: access.allowsHighlightedPresentation && hasAnyValue([coverImageUrl, ...galleryImageUrls, aboutSection, whyWorkHere, benefits])
+  }
 }
 
 export async function updateCompanyPlanAssignment(input: {

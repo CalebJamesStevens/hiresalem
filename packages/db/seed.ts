@@ -27,6 +27,17 @@ const companyRows = [
     website: "https://example.com/salem-design",
     location: "Keizer, OR",
     plan: "enhanced_profile" as const,
+    linkedinUrl: "https://linkedin.com/company/salem-design-co",
+    instagramUrl: "https://instagram.com/salemdesignco",
+    aboutSection:
+      "Salem Design Co partners with regional employers on product strategy, UX research, design systems, and customer experience work across the mid-valley.\n\nThe team works closely with local operators and founders, so candidates get exposure to both strategy and execution.",
+    whyWorkHere:
+      "You will work on visible local projects, collaborate directly with decision makers, and have room to shape process as the studio grows.",
+    benefits:
+      "- Hybrid flexibility for most roles\n- Professional development budget\n- Paid volunteer time for community-focused work",
+    coverImageUrl: "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1600&q=80",
+    galleryImageUrl1: "https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=1200&q=80",
+    galleryImageUrl2: "https://images.unsplash.com/photo-1517048676732-d65bc937f952?auto=format&fit=crop&w=1200&q=80",
     planOverrideReason: "Pilot enhanced profile account for local testing"
   }
 ] as const

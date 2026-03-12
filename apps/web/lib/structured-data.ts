@@ -138,8 +138,12 @@ export function buildCompanyOrganizationJsonLd(input: {
   path: string
   website?: string | null
   logoUrl?: string | null
+  imageUrl?: string | null
   description?: string | null
+  sameAs?: string[]
 }) {
+  const sameAs = [input.website ?? null, ...(input.sameAs ?? [])].filter((value): value is string => Boolean(value))
+
   return {
     "@context": "https://schema.org",
     "@type": "Organization",
@@ -148,7 +152,8 @@ export function buildCompanyOrganizationJsonLd(input: {
     url: absoluteUrl(input.path),
     description: input.description ?? undefined,
     logo: input.logoUrl ?? undefined,
-    sameAs: input.website ? [input.website] : undefined
+    image: input.imageUrl ?? input.logoUrl ?? undefined,
+    sameAs: sameAs.length > 0 ? sameAs : undefined
   }
 }
 

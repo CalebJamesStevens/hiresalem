@@ -3,17 +3,14 @@ import { notFound } from "next/navigation"
 
 import { Breadcrumbs } from "@/components/breadcrumbs"
 import { JsonLd } from "@/components/json-ld"
-import { buildCompanyProfilePageDescription, getCompanyBySlug, getCompanyProfileInitials } from "@/lib/companies"
+import { MarkdownContent } from "@/components/markdown-content"
+import { buildCompanyProfilePageDescription, getCompanyBySlug, getCompanyProfileInitials, getCompanyPublicProfileContent } from "@/lib/companies"
 import { categoryOptions } from "@/lib/job-search"
 import { listActiveJobsForCompany } from "@/lib/jobs"
 import { buildPageMetadata } from "@/lib/seo"
 import { getJobHubLinksForContext } from "@/lib/seo-taxonomy"
 import { buildCompanyJobsPath } from "@/lib/site-paths"
-import {
-  buildBreadcrumbJsonLd,
-  buildCollectionPageJsonLd,
-  buildCompanyOrganizationJsonLd
-} from "@/lib/structured-data"
+import { buildBreadcrumbJsonLd, buildCollectionPageJsonLd, buildCompanyOrganizationJsonLd } from "@/lib/structured-data"
 
 type CompanyPageProps = {
   params: Promise<{
@@ -40,11 +37,15 @@ function formatList(values: string[]) {
 function getCompanyIntroText(input: {
   name: string
   shortDescription?: string | null
+  aboutSection?: string | null
   location?: string | null
-  activeJobCount: number
 }) {
   if (input.shortDescription?.trim()) {
     return input.shortDescription.trim()
+  }
+
+  if (input.aboutSection?.trim()) {
+    return input.aboutSection.trim()
   }
 
   if (input.location?.trim()) {
@@ -52,6 +53,22 @@ function getCompanyIntroText(input: {
   }
 
   return `${input.name} uses HireSalem to share local hiring opportunities and keep candidates up to date on active openings.`
+}
+
+function getSocialLinkLabel(id: string) {
+  if (id === "linkedinUrl") {
+    return "LinkedIn"
+  }
+
+  if (id === "facebookUrl") {
+    return "Facebook"
+  }
+
+  if (id === "instagramUrl") {
+    return "Instagram"
+  }
+
+  return "Social"
 }
 
 export async function generateMetadata({ params }: CompanyPageProps) {
@@ -70,10 +87,12 @@ export async function generateMetadata({ params }: CompanyPageProps) {
     })
   }
 
+  const publicProfile = getCompanyPublicProfileContent(company)
   const companyJobs = await listActiveJobsForCompany(company.id)
   const description = buildCompanyProfilePageDescription({
     name: company.name,
-    shortDescription: company.shortDescription,
+    shortDescription: publicProfile.shortDescription,
+    aboutSection: publicProfile.aboutSection,
     location: company.location,
     activeJobCount: companyJobs.length
   })
@@ -101,6 +120,7 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
     notFound()
   }
 
+  const publicProfile = getCompanyPublicProfileContent(company)
   const companyJobs = await listActiveJobsForCompany(company.id)
   const companyPath = buildCompanyJobsPath(company.slug)
   const categories = Array.from(
@@ -120,6 +140,13 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
     { name: "Salem jobs", href: "/jobs/salem" },
     { name: company.name, href: companyPath }
   ]
+  const introText = getCompanyIntroText({
+    name: company.name,
+    shortDescription: publicProfile.shortDescription,
+    aboutSection: publicProfile.aboutSection,
+    location: company.location
+  })
+  const hasEnhancedSections = Boolean(publicProfile.aboutSection || publicProfile.whyWorkHere || publicProfile.benefits || publicProfile.socialLinks.length > 0)
 
   return (
     <section className="space-y-8">
@@ -138,7 +165,9 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
             path: companyPath,
             website: company.website,
             logoUrl: company.logoUrl,
-            description: company.shortDescription
+            imageUrl: publicProfile.coverImageUrl,
+            description: publicProfile.shortDescription ?? publicProfile.aboutSection,
+            sameAs: publicProfile.socialLinks.map((link) => link.href)
           }),
           buildCollectionPageJsonLd({
             name: `${company.name} jobs`,
@@ -152,48 +181,133 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
         ]}
       />
 
-      <section className="space-y-4 rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-        <Breadcrumbs items={breadcrumbs} />
-        <div className="flex flex-col gap-6 md:flex-row md:items-start">
-          {company.logoUrl ? (
-            <img src={company.logoUrl} alt={`${company.name} logo`} className="h-20 w-20 rounded-2xl border border-slate-200 object-cover" />
-          ) : (
-            <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-slate-900 text-xl font-semibold text-white">
-              {getCompanyProfileInitials(company.name)}
-            </div>
-          )}
+      <section
+        className={`overflow-hidden rounded-[2rem] border shadow-sm ${
+          publicProfile.usesEnhancedPresentation
+            ? "border-amber-200 bg-gradient-to-br from-white via-amber-50 to-slate-100"
+            : "border-slate-200 bg-white"
+        }`}
+      >
+        {publicProfile.coverImageUrl ? (
+          <div className="relative h-56 overflow-hidden border-b border-black/10 md:h-72">
+            <img src={publicProfile.coverImageUrl} alt={`${company.name} cover`} className="h-full w-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-white/80 via-white/20 to-transparent" />
+          </div>
+        ) : null}
 
-          <div className="space-y-3">
-            <div className="space-y-2">
-              <h1 className="text-3xl font-bold tracking-tight text-slate-950 md:text-4xl">{company.name}</h1>
-              <p className="max-w-3xl text-base leading-7 text-slate-700">
-                {getCompanyIntroText({
-                  name: company.name,
-                  shortDescription: company.shortDescription,
-                  location: company.location,
-                  activeJobCount: companyJobs.length
-                })}
-              </p>
-            </div>
+        <div className={`space-y-5 p-6 ${publicProfile.coverImageUrl ? "md:-mt-16 md:relative md:z-10" : ""}`}>
+          <Breadcrumbs items={breadcrumbs} />
 
-            <div className="flex flex-wrap gap-2 text-sm text-slate-600">
-              {company.location ? <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1">{company.location}</span> : null}
-              <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1">
-                {companyJobs.length === 1 ? "1 active role" : `${companyJobs.length.toLocaleString()} active roles`}
-              </span>
-              {categories.length > 0 ? <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1">{formatList(categories.slice(0, 3))}</span> : null}
-            </div>
+          <div className="flex flex-col gap-6 md:flex-row md:items-start">
+            {company.logoUrl ? (
+              <img
+                src={company.logoUrl}
+                alt={`${company.name} logo`}
+                className={`h-20 w-20 rounded-2xl object-cover ${publicProfile.usesEnhancedPresentation ? "border border-white bg-white shadow-lg" : "border border-slate-200"}`}
+              />
+            ) : (
+              <div
+                className={`flex h-20 w-20 items-center justify-center rounded-2xl text-xl font-semibold ${
+                  publicProfile.usesEnhancedPresentation ? "bg-slate-900 text-white shadow-lg" : "bg-slate-900 text-white"
+                }`}
+              >
+                {getCompanyProfileInitials(company.name)}
+              </div>
+            )}
 
-            {company.website ? (
-              <p className="text-slate-600">
-                <Link href={company.website} className="underline underline-offset-4" target="_blank" rel="noreferrer">
-                  Visit company website
-                </Link>
-              </p>
-            ) : null}
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <h1 className="text-3xl font-bold tracking-tight text-slate-950 md:text-4xl">
+                  {company.name}
+                </h1>
+                <p className="max-w-3xl text-base leading-7 text-slate-700">{introText}</p>
+              </div>
+
+              <div className="flex flex-wrap gap-2 text-sm text-slate-600">
+                {company.location ? (
+                  <span className={`rounded-full px-3 py-1 ${publicProfile.usesEnhancedPresentation ? "border border-amber-200 bg-white/80" : "border border-slate-200 bg-slate-50"}`}>
+                    {company.location}
+                  </span>
+                ) : null}
+                <span className={`rounded-full px-3 py-1 ${publicProfile.usesEnhancedPresentation ? "border border-amber-200 bg-white/80" : "border border-slate-200 bg-slate-50"}`}>
+                  {companyJobs.length === 1 ? "1 active role" : `${companyJobs.length.toLocaleString()} active roles`}
+                </span>
+                {categories.length > 0 ? (
+                  <span className={`rounded-full px-3 py-1 ${publicProfile.usesEnhancedPresentation ? "border border-amber-200 bg-white/80" : "border border-slate-200 bg-slate-50"}`}>
+                    {formatList(categories.slice(0, 3))}
+                  </span>
+                ) : null}
+              </div>
+
+              <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-slate-700">
+                {company.website ? (
+                  <Link href={company.website} className="underline underline-offset-4" target="_blank" rel="noreferrer">
+                    Visit company website
+                  </Link>
+                ) : null}
+                {publicProfile.socialLinks.map((link) => (
+                  <Link key={link.id} href={link.href} className="underline underline-offset-4" target="_blank" rel="noreferrer">
+                    {getSocialLinkLabel(link.id)}
+                  </Link>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </section>
+
+      {publicProfile.galleryImageUrls.length > 0 ? (
+        <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="space-y-2">
+            <h2 className="text-2xl font-semibold text-slate-950">Inside the team</h2>
+            <p className="text-sm leading-6 text-slate-600">A quick look at the workplace and brand presence this employer shared with candidates.</p>
+          </div>
+          <div className="mt-5 grid gap-4 md:grid-cols-2">
+            {publicProfile.galleryImageUrls.map((imageUrl, index) => (
+              <div key={imageUrl} className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-slate-50">
+                <img src={imageUrl} alt={`${company.name} gallery image ${index + 1}`} className="h-64 w-full object-cover" />
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {hasEnhancedSections ? (
+        <section className="grid gap-4 lg:grid-cols-3">
+          {publicProfile.aboutSection ? (
+            <article className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
+              <div className="space-y-2">
+                <h2 className="text-2xl font-semibold text-slate-950">About {company.name}</h2>
+                <div className="prose prose-slate max-w-none">
+                  <MarkdownContent value={publicProfile.aboutSection} />
+                </div>
+              </div>
+            </article>
+          ) : null}
+
+          {publicProfile.whyWorkHere ? (
+            <article className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="space-y-2">
+                <h2 className="text-xl font-semibold text-slate-950">Why work here</h2>
+                <div className="prose prose-slate max-w-none">
+                  <MarkdownContent value={publicProfile.whyWorkHere} />
+                </div>
+              </div>
+            </article>
+          ) : null}
+
+          {publicProfile.benefits ? (
+            <article className={`rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm ${publicProfile.aboutSection ? "lg:col-span-3" : "lg:col-span-2"}`}>
+              <div className="space-y-2">
+                <h2 className="text-xl font-semibold text-slate-950">Benefits and perks</h2>
+                <div className="prose prose-slate max-w-none">
+                  <MarkdownContent value={publicProfile.benefits} />
+                </div>
+              </div>
+            </article>
+          ) : null}
+        </section>
+      ) : null}
 
       <section className="space-y-4">
         <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">

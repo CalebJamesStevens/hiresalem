@@ -3,12 +3,15 @@ import { describe, expect, test } from "bun:test"
 import {
   buildCompanyProfilePageDescription,
   canManageCompanyProfile,
+  getCompanyPublicProfileContent,
   getCompanyProfileInitials,
   getCompanyPlanValidationErrorCode,
   normalizeCompanyWebsite,
   parseCompanyPlanInput,
-  parseCompanyProfileInput
+  parseCompanyProfileInput,
+  parseCompanyProfileInputForPlan
 } from "@/lib/companies"
+import { resolveCompanyPlan } from "@repo/db/plans"
 
 describe("normalizeCompanyWebsite", () => {
   test("returns null for blank input", () => {
@@ -45,7 +48,16 @@ describe("parseCompanyProfileInput", () => {
       logoUrl: "https://example.com/logo.png",
       shortDescription: "Community healthcare team serving Salem families.",
       website: "https://example.com",
-      location: "Salem, OR"
+      location: "Salem, OR",
+      linkedinUrl: null,
+      facebookUrl: null,
+      instagramUrl: null,
+      aboutSection: null,
+      whyWorkHere: null,
+      benefits: null,
+      coverImageUrl: null,
+      galleryImageUrl1: null,
+      galleryImageUrl2: null
     })
   })
 
@@ -71,6 +83,52 @@ describe("parseCompanyProfileInput", () => {
     })
 
     expect(parsed.success).toBe(false)
+  })
+})
+
+describe("parseCompanyProfileInputForPlan", () => {
+  test("rejects enhanced-only social links on the free plan", () => {
+    const parsed = parseCompanyProfileInputForPlan(
+      {
+        name: "Acme Health",
+        logoUrl: "",
+        shortDescription: "",
+        website: "",
+        location: "",
+        linkedinUrl: "https://linkedin.com/company/acme-health"
+      },
+      resolveCompanyPlan({ plan: "free" })
+    )
+
+    expect(parsed.success).toBe(false)
+
+    if (parsed.success) {
+      return
+    }
+
+    expect("errorCode" in parsed ? parsed.errorCode : null).toBe("plan_locked_social_links")
+  })
+
+  test("accepts enhanced fields when the plan allows them", () => {
+    const parsed = parseCompanyProfileInputForPlan(
+      {
+        name: "Acme Health",
+        logoUrl: "",
+        shortDescription: "",
+        website: "",
+        location: "",
+        linkedinUrl: "https://linkedin.com/company/acme-health",
+        aboutSection: "Mission driven local care.",
+        whyWorkHere: "Strong clinical mentorship.",
+        benefits: "- Health coverage",
+        coverImageUrl: "https://example.com/cover.jpg",
+        galleryImageUrl1: "https://example.com/gallery-1.jpg",
+        galleryImageUrl2: ""
+      },
+      resolveCompanyPlan({ plan: "enhanced_profile" })
+    )
+
+    expect(parsed.success).toBe(true)
   })
 })
 
@@ -163,5 +221,55 @@ describe("public company profile helpers", () => {
   test("falls back to company initials when no logo is present", () => {
     expect(getCompanyProfileInitials("Willamette Works")).toBe("WW")
     expect(getCompanyProfileInitials("Acme")).toBe("A")
+  })
+
+  test("hides enhanced sections for free-plan companies even if data exists", () => {
+    const profile = getCompanyPublicProfileContent({
+      shortDescription: "Local care team.",
+      linkedinUrl: "https://linkedin.com/company/acme-health",
+      facebookUrl: null,
+      instagramUrl: null,
+      aboutSection: "Expanded story",
+      whyWorkHere: "Great culture",
+      benefits: "Health coverage",
+      coverImageUrl: "https://example.com/cover.jpg",
+      galleryImageUrl1: "https://example.com/1.jpg",
+      galleryImageUrl2: "https://example.com/2.jpg",
+      plan: "free",
+      planOverride: null
+    })
+
+    expect(profile.socialLinks).toEqual([])
+    expect(profile.aboutSection).toBeNull()
+    expect(profile.whyWorkHere).toBeNull()
+    expect(profile.benefits).toBeNull()
+    expect(profile.coverImageUrl).toBeNull()
+    expect(profile.galleryImageUrls).toEqual([])
+    expect(profile.usesEnhancedPresentation).toBe(false)
+  })
+
+  test("returns enhanced sections for enhanced-profile companies", () => {
+    const profile = getCompanyPublicProfileContent({
+      shortDescription: "Local care team.",
+      linkedinUrl: "https://linkedin.com/company/acme-health",
+      facebookUrl: null,
+      instagramUrl: "https://instagram.com/acmehealth",
+      aboutSection: "Expanded story",
+      whyWorkHere: "Great culture",
+      benefits: "Health coverage",
+      coverImageUrl: "https://example.com/cover.jpg",
+      galleryImageUrl1: "https://example.com/1.jpg",
+      galleryImageUrl2: "https://example.com/2.jpg",
+      plan: "enhanced_profile",
+      planOverride: null
+    })
+
+    expect(profile.socialLinks.map((link) => link.id)).toEqual(["linkedinUrl", "instagramUrl"])
+    expect(profile.aboutSection).toBe("Expanded story")
+    expect(profile.whyWorkHere).toBe("Great culture")
+    expect(profile.benefits).toBe("Health coverage")
+    expect(profile.coverImageUrl).toBe("https://example.com/cover.jpg")
+    expect(profile.galleryImageUrls).toEqual(["https://example.com/1.jpg", "https://example.com/2.jpg"])
+    expect(profile.usesEnhancedPresentation).toBe(true)
   })
 })
