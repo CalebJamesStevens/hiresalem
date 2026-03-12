@@ -4,7 +4,9 @@ import {
   buildCompanyProfilePageDescription,
   canManageCompanyProfile,
   getCompanyProfileInitials,
+  getCompanyPlanValidationErrorCode,
   normalizeCompanyWebsite,
+  parseCompanyPlanInput,
   parseCompanyProfileInput
 } from "@/lib/companies"
 
@@ -105,6 +107,44 @@ describe("canManageCompanyProfile", () => {
         "owner-2"
       )
     ).toBe(false)
+  })
+})
+
+describe("parseCompanyPlanInput", () => {
+  test("normalizes matching overrides away and trims internal notes", () => {
+    const parsed = parseCompanyPlanInput({
+      plan: "enhanced_profile",
+      planOverride: "enhanced_profile",
+      planOverrideReason: "  Chamber pilot  "
+    })
+
+    expect(parsed.success).toBe(true)
+
+    if (!parsed.success) {
+      return
+    }
+
+    expect(parsed.data).toEqual({
+      plan: "enhanced_profile",
+      planOverride: null,
+      planOverrideReason: "Chamber pilot"
+    })
+  })
+
+  test("rejects invalid plan ids", () => {
+    const parsed = parseCompanyPlanInput({
+      plan: "gold",
+      planOverride: "",
+      planOverrideReason: ""
+    })
+
+    expect(parsed.success).toBe(false)
+
+    if (parsed.success) {
+      return
+    }
+
+    expect(getCompanyPlanValidationErrorCode(parsed.error)).toBe("invalid_company_plan")
   })
 })
 

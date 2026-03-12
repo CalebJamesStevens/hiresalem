@@ -26,7 +26,8 @@ const companyRows = [
     shortDescription: "Salem Design Co helps regional employers ship better digital products and customer experiences.",
     website: "https://example.com/salem-design",
     location: "Keizer, OR",
-    plan: "free" as const
+    plan: "enhanced_profile" as const,
+    planOverrideReason: "Pilot enhanced profile account for local testing"
   }
 ] as const
 

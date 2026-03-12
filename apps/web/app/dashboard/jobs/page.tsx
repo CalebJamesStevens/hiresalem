@@ -1,8 +1,10 @@
 import Link from "next/link"
 
 import { JobModerationActions } from "@/components/job-moderation-actions"
+import { LockedPlanFeatureCard } from "@/components/locked-plan-feature-card"
 import { getCompanyByOwnerAuthId } from "@/lib/companies"
 import { hasRole } from "@/lib/authz"
+import { employerJobLockedFeatureIds, getLockedCompanyFeatures } from "@/lib/company-plan-ui"
 import { getEmployerJobLifecycleStatus, getJobStatusLabel, isJobExpired, isJobPublished } from "@/lib/job-listing-billing"
 import { listEmployerApplicantJobs } from "@/lib/applicants"
 import { requirePageRoles } from "@/lib/page-auth"
@@ -31,6 +33,7 @@ export default async function DashboardJobsPage({ searchParams }: DashboardJobsP
   const activeJobsCount = jobs.filter((job) => getEmployerJobLifecycleStatus(job) === "live").length
   const activeJobsLimit = resolvedPlan?.entitlements.maxActiveJobs ?? null
   const publishLimitReached = activeJobsLimit !== null && activeJobsCount >= activeJobsLimit
+  const lockedJobFeatures = resolvedPlan ? getLockedCompanyFeatures(resolvedPlan, employerJobLockedFeatureIds) : []
 
   return (
     <section className="space-y-4">
@@ -53,20 +56,36 @@ export default async function DashboardJobsPage({ searchParams }: DashboardJobsP
       ) : null}
 
       {!isAdmin && resolvedPlan ? (
-        <div className="rounded border border-slate-200 bg-white p-4 text-sm text-slate-700">
-          <p>
-            Current plan: <span className="font-medium text-slate-900">{resolvedPlan.label}</span>
-          </p>
-          <p className="mt-1">
-            Live jobs:{" "}
-            <span className="font-medium text-slate-900">
-              {activeJobsCount}
-              {activeJobsLimit !== null ? ` / ${activeJobsLimit}` : ""}
-            </span>
-          </p>
-          <p className="mt-1">Free-plan jobs publish with standard visibility and use the standard listing duration.</p>
-          {publishLimitReached ? (
-            <p className="mt-2 text-amber-700">You’ve reached the Free plan limit. Close one live job before publishing another draft.</p>
+        <div className="space-y-4">
+          <div className="rounded border border-slate-200 bg-white p-4 text-sm text-slate-700">
+            <p>
+              Current plan: <span className="font-medium text-slate-900">{resolvedPlan.label}</span>
+            </p>
+            <p className="mt-1">
+              Live jobs:{" "}
+              <span className="font-medium text-slate-900">
+                {activeJobsCount}
+                {activeJobsLimit !== null ? ` / ${activeJobsLimit}` : ""}
+              </span>
+            </p>
+            <p className="mt-1">
+              Standard business listings stay available now, and richer profile or featured placement options can be enabled from{" "}
+              <Link href="/dashboard/plan" className="underline underline-offset-4">
+                your plan page
+              </Link>
+              .
+            </p>
+            {publishLimitReached ? (
+              <p className="mt-2 text-amber-700">You’ve reached the current live-job limit. Close one live job before publishing another draft.</p>
+            ) : null}
+          </div>
+
+          {lockedJobFeatures.length > 0 ? (
+            <section className="grid gap-4 md:grid-cols-2">
+              {lockedJobFeatures.map((feature) => (
+                <LockedPlanFeatureCard key={feature.id} plan={resolvedPlan} featureId={feature.id} />
+              ))}
+            </section>
           ) : null}
         </div>
       ) : null}

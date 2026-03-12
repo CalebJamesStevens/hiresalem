@@ -1,4 +1,6 @@
+import { LockedPlanFeatureCard } from "@/components/locked-plan-feature-card"
 import { JobForm } from "@/components/job-form"
+import { employerJobLockedFeatureIds, getLockedCompanyFeatures } from "@/lib/company-plan-ui"
 import { JOB_LISTING_DEFAULT_DAYS } from "@/lib/job-listing-billing"
 import { getCompanyByOwnerAuthId, listCompanies } from "@/lib/companies"
 import { hasRole } from "@/lib/authz"
@@ -23,6 +25,7 @@ export default async function PostJobPage({ searchParams }: PostJobPageProps) {
   const activeJobsCount = company ? await countPublishedJobsForCompany(company.id) : 0
   const activeJobsLimit = resolvedPlan?.entitlements.maxActiveJobs ?? null
   const publishLimitReached = activeJobsLimit !== null && activeJobsCount >= activeJobsLimit
+  const lockedJobFeatures = resolvedPlan ? getLockedCompanyFeatures(resolvedPlan, employerJobLockedFeatureIds) : []
   const publishDisabledMessage = publishLimitReached
     ? `Free plan includes up to ${activeJobsLimit} live jobs. Close one live job before publishing another. You can still save drafts.`
     : null
@@ -35,18 +38,28 @@ export default async function PostJobPage({ searchParams }: PostJobPageProps) {
           Finish your business setup before posting. <Link href="/become-business" className="underline">Create your company profile</Link>.
         </p>
       ) : company && resolvedPlan ? (
-        <div className="space-y-2 rounded border border-slate-200 bg-white p-4 text-sm text-slate-700">
-          <p>
-            Posting as <span className="font-medium text-slate-900">{company.name}</span> on the <span className="font-medium text-slate-900">{resolvedPlan.label}</span> plan.
-          </p>
-          <p>
-            Live jobs:{" "}
-            <span className="font-medium text-slate-900">
-              {activeJobsCount}
-              {activeJobsLimit !== null ? ` / ${activeJobsLimit}` : ""}
-            </span>
-          </p>
-          <p>Free-plan listings publish at standard visibility and run for {JOB_LISTING_DEFAULT_DAYS} days by default.</p>
+        <div className="space-y-4">
+          <div className="space-y-2 rounded border border-slate-200 bg-white p-4 text-sm text-slate-700">
+            <p>
+              Posting as <span className="font-medium text-slate-900">{company.name}</span> on the <span className="font-medium text-slate-900">{resolvedPlan.label}</span> plan.
+            </p>
+            <p>
+              Live jobs:{" "}
+              <span className="font-medium text-slate-900">
+                {activeJobsCount}
+                {activeJobsLimit !== null ? ` / ${activeJobsLimit}` : ""}
+              </span>
+            </p>
+            <p>Standard listings run for {JOB_LISTING_DEFAULT_DAYS} days by default unless your plan includes pilot duration upgrades.</p>
+          </div>
+
+          {lockedJobFeatures.length > 0 ? (
+            <section className="grid gap-4 md:grid-cols-2">
+              {lockedJobFeatures.map((feature) => (
+                <LockedPlanFeatureCard key={feature.id} plan={resolvedPlan} featureId={feature.id} />
+              ))}
+            </section>
+          ) : null}
         </div>
       ) : null}
       {publishDisabledMessage ? <p className="rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{publishDisabledMessage}</p> : null}

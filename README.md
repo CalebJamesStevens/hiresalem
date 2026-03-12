@@ -69,6 +69,9 @@ Business plans foundation:
 - Free-plan onboarding lives at `/become-business` and captures the basic public company profile fields: name, logo URL, short description, website, and city/area
 - the employer-facing profile editor lives at `/dashboard/company`, and the public company page continues to render at `/jobs/company/[slug]`
 - Free-plan employers can save drafts, publish up to 3 live jobs at once, close/reopen eligible jobs from `/dashboard/jobs`, and use the standard listing duration without billing
+- employers can review their current plan, included capabilities, and upgrade-only capabilities at `/dashboard/plan`
+- admins can manually assign pilot plans and override notes for businesses at `/admin/businesses`
+- upgrade prompts are intentionally simple and point back to manual/internal enablement until billing is integrated
 
 ## Commands
 

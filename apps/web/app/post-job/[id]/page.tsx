@@ -2,7 +2,9 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 
 import { JobForm } from "@/components/job-form"
+import { LockedPlanFeatureCard } from "@/components/locked-plan-feature-card"
 import { hasRole } from "@/lib/authz"
+import { employerJobLockedFeatureIds, getLockedCompanyFeatures } from "@/lib/company-plan-ui"
 import { getCompanyById, listCompanies } from "@/lib/companies"
 import { getEmployerJobLifecycleStatus, getJobStatusLabel, isJobPublished } from "@/lib/job-listing-billing"
 import { getJobById } from "@/lib/jobs"
@@ -38,6 +40,7 @@ export default async function EditJobPage({ params }: EditJobPageProps) {
   const activeJobsLimit = resolvedPlan?.entitlements.maxActiveJobs ?? null
   const lifecycleStatus = getEmployerJobLifecycleStatus(job)
   const publishLimitReached = !isJobPublished(job) && activeJobsLimit !== null && activeJobsCount >= activeJobsLimit
+  const lockedJobFeatures = resolvedPlan ? getLockedCompanyFeatures(resolvedPlan, employerJobLockedFeatureIds) : []
   const publishDisabledMessage = publishLimitReached
     ? `Free plan includes up to ${activeJobsLimit} live jobs. Close one live job before publishing this one.`
     : null
@@ -58,6 +61,14 @@ export default async function EditJobPage({ params }: EditJobPageProps) {
           </Link>
         </p>
       </div>
+
+      {!isAdmin && resolvedPlan && lockedJobFeatures.length > 0 ? (
+        <section className="grid gap-4 md:grid-cols-2">
+          {lockedJobFeatures.map((feature) => (
+            <LockedPlanFeatureCard key={feature.id} plan={resolvedPlan} featureId={feature.id} />
+          ))}
+        </section>
+      ) : null}
 
       <JobForm
         disabled={false}

@@ -3,6 +3,7 @@ import { z } from "zod"
 
 import { db } from "@/lib/db"
 import { snippet } from "@/lib/seo"
+import { companyPlanIds, type CompanyPlanId } from "@repo/db/plans"
 import { companies } from "@repo/db/schema/companies"
 
 export type Company = typeof companies.$inferSelect
@@ -16,6 +17,7 @@ export const COMPANY_LOGO_URL_MAX_LENGTH = 500
 export const COMPANY_SHORT_DESCRIPTION_MAX_LENGTH = 280
 export const COMPANY_LOCATION_MAX_LENGTH = 120
 export const COMPANY_WEBSITE_MAX_LENGTH = 500
+export const COMPANY_PLAN_OVERRIDE_REASON_MAX_LENGTH = 500
 
 const optionalProfileTextField = (max: number, message: string) =>
   z.preprocess((value) => {
@@ -45,6 +47,21 @@ const companyProfileInputSchema = z.object({
   location: optionalProfileTextField(COMPANY_LOCATION_MAX_LENGTH, "company_location_length")
 })
 
+const companyPlanInputSchema = z.object({
+  plan: z.enum(companyPlanIds, {
+    message: "invalid_company_plan"
+  }),
+  planOverride: z.preprocess((value) => {
+    if (typeof value !== "string") {
+      return undefined
+    }
+
+    const trimmed = value.trim()
+    return trimmed ? trimmed : undefined
+  }, z.enum(companyPlanIds, { message: "invalid_company_plan" }).optional()),
+  planOverrideReason: optionalProfileTextField(COMPANY_PLAN_OVERRIDE_REASON_MAX_LENGTH, "plan_override_reason_length")
+})
+
 export type CompanyProfileInput = {
   name: string
   logoUrl: string | null
@@ -60,6 +77,8 @@ export type CompanyProfileValidationErrorCode =
   | "invalid_website"
   | "company_location_length"
   | "invalid_company_profile"
+
+export type CompanyPlanValidationErrorCode = "invalid_company_plan" | "plan_override_reason_length" | "invalid_company_plan_update"
 
 export function toCompanySlug(value: string) {
   return value
@@ -167,6 +186,35 @@ export function getCompanyProfileValidationErrorCode(error: z.ZodError): Company
   return "invalid_company_profile"
 }
 
+export function parseCompanyPlanInput(input: unknown) {
+  const result = companyPlanInputSchema.safeParse(input)
+
+  if (!result.success) {
+    return result
+  }
+
+  const normalizedPlanOverride = result.data.planOverride && result.data.planOverride !== result.data.plan ? result.data.planOverride : null
+
+  return {
+    success: true as const,
+    data: {
+      plan: result.data.plan,
+      planOverride: normalizedPlanOverride,
+      planOverrideReason: result.data.planOverrideReason ?? null
+    }
+  }
+}
+
+export function getCompanyPlanValidationErrorCode(error: z.ZodError): CompanyPlanValidationErrorCode {
+  const code = error.issues[0]?.message
+
+  if (code === "invalid_company_plan" || code === "plan_override_reason_length") {
+    return code
+  }
+
+  return "invalid_company_plan_update"
+}
+
 export function canManageCompanyProfile(viewer: CompanyProfileViewer, ownerAuthId: string) {
   return viewer.isAdmin || viewer.id === ownerAuthId
 }
@@ -214,6 +262,26 @@ export async function updateCompanyProfile(input: {
       shortDescription: input.shortDescription,
       website: input.website,
       location: input.location
+    })
+    .where(eq(companies.id, input.id))
+    .returning()
+
+  return updated ?? null
+}
+
+export async function updateCompanyPlanAssignment(input: {
+  id: string
+  plan: CompanyPlanId
+  planOverride: CompanyPlanId | null
+  planOverrideReason: string | null
+}) {
+  const [updated] = await db
+    .update(companies)
+    .set({
+      plan: input.plan,
+      planOverride: input.planOverride,
+      planOverrideReason: input.planOverrideReason,
+      planAssignedAt: new Date()
     })
     .where(eq(companies.id, input.id))
     .returning()
