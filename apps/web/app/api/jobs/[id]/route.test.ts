@@ -13,9 +13,11 @@ const existingDraftJob = {
   slug: "operations-manager",
   ownerAuthId: "owner-1",
   companyId: "company-1",
+  isFeatured: false,
   isActive: false,
   paymentStatus: "paid" as const,
   listingDurationDays: 30,
+  featuredAt: null,
   activatedAt: null,
   expiresAt: null,
   description: "Run daily operations.",
@@ -68,7 +70,7 @@ mock.module("@/lib/api-auth", () => ({
 }))
 
 mock.module("@/lib/authz", () => ({
-  hasRole: () => false,
+  hasRole: (roles: string[], role: string) => roles.includes(role),
   normalizeRoles: (roles: string[]) => roles
 }))
 
@@ -163,5 +165,61 @@ describe("PATCH /api/jobs/[id]", () => {
     } finally {
       globalThis.Date = RealDate
     }
+  })
+
+  test("blocks featuring a free-plan job", async () => {
+    const { PATCH } = await import("@/app/api/jobs/[id]/route")
+
+    const response = await PATCH(
+      new Request("http://localhost:3000/api/jobs/job-1", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ isFeatured: true })
+      }),
+      {
+        params: Promise.resolve({
+          id: "job-1"
+        })
+      }
+    )
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({
+      error: "Featured placement is available on Featured Job or Business Pro."
+    })
+    expect(updateMock).not.toHaveBeenCalled()
+  })
+
+  test("allows removing featured placement even after access is lost", async () => {
+    selectLimitMock.mockResolvedValueOnce([
+      {
+        ...existingDraftJob,
+        isFeatured: true,
+        featuredAt: new Date("2026-03-01T18:00:00.000Z")
+      }
+    ])
+    const { PATCH } = await import("@/app/api/jobs/[id]/route")
+
+    const response = await PATCH(
+      new Request("http://localhost:3000/api/jobs/job-1", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ isFeatured: false })
+      }),
+      {
+        params: Promise.resolve({
+          id: "job-1"
+        })
+      }
+    )
+
+    expect(response.status).toBe(200)
+    const [payload] = updateSetMock.mock.calls.at(-1) ?? []
+    expect(payload?.isFeatured).toBe(false)
+    expect(payload?.featuredAt).toBeNull()
   })
 })

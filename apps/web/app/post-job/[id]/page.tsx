@@ -38,6 +38,7 @@ export default async function EditJobPage({ params }: EditJobPageProps) {
   const resolvedPlan = company ? resolveCompanyPlan(company) : null
   const activeJobsCount = company ? await countPublishedJobsForCompany(company.id) : 0
   const activeJobsLimit = resolvedPlan?.entitlements.maxActiveJobs ?? null
+  const featuredPlacementEligible = Boolean(resolvedPlan?.entitlements.allowsFeaturedJobs && resolvedPlan?.entitlements.allowsBoostedJobPlacement)
   const lifecycleStatus = getEmployerJobLifecycleStatus(job)
   const publishLimitReached = !isJobPublished(job) && activeJobsLimit !== null && activeJobsCount >= activeJobsLimit
   const lockedJobFeatures = resolvedPlan ? getLockedCompanyFeatures(resolvedPlan, employerJobLockedFeatureIds) : []
@@ -84,6 +85,8 @@ export default async function EditJobPage({ params }: EditJobPageProps) {
         activeJobsLimit={activeJobsLimit}
         planLabel={resolvedPlan?.label ?? null}
         initialStatus={lifecycleStatus}
+        canFeatureJob={isAdmin || featuredPlacementEligible || job.isFeatured}
+        featuredPlacementEligible={isAdmin || featuredPlacementEligible}
         initialValues={{
           id: job.id,
           slug: job.slug,
@@ -105,6 +108,7 @@ export default async function EditJobPage({ params }: EditJobPageProps) {
           description: job.description,
           applyType: job.applyType,
           applyUrl: job.applyUrl,
+          isFeatured: job.isFeatured,
           listingDurationDays: job.listingDurationDays,
           companyId: job.companyId
         }}

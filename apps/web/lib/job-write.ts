@@ -48,6 +48,14 @@ const listingDurationSchema = z.preprocess((value) => {
   return JOB_LISTING_DEFAULT_DAYS
 }, z.number().int().min(JOB_LISTING_MIN_DAYS).max(JOB_LISTING_MAX_DAYS))
 
+const featuredBooleanSchema = z.preprocess((value) => {
+  if (typeof value === "string") {
+    return value === "true" || value === "on"
+  }
+
+  return value
+}, z.boolean().default(false))
+
 export const jobWriteSchema = z
   .object({
     title: z.string().min(2),
@@ -69,6 +77,7 @@ export const jobWriteSchema = z
     description: z.string().optional(),
     applyType: z.enum(["onsite", "external"]).default("onsite"),
     applyUrl: optionalUrlSchema,
+    isFeatured: featuredBooleanSchema,
     listingDurationDays: listingDurationSchema,
     companyId: z.string().uuid().optional(),
     newCompanyName: optionalTrimmedStringSchema,
@@ -240,7 +249,8 @@ export function buildJobWriteValues(input: JobWriteInput, companyId: string | nu
     salaryInterval: input.salaryInterval ?? null,
     description: cleanOptionalText(input.description),
     applyType: input.applyType,
-    applyUrl: input.applyType === "external" ? cleanOptionalText(input.applyUrl) : null
+    applyUrl: input.applyType === "external" ? cleanOptionalText(input.applyUrl) : null,
+    isFeatured: input.isFeatured
   } as const
 }
 

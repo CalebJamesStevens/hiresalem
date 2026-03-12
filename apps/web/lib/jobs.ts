@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, gt, ilike, isNull, ne, or, sql, type SQL } from "drizzle-orm"
 
 import { db } from "@/lib/db"
+import { getBoostedNewestJobOrderBy, getBoostedRelevanceJobOrderBy, getFeaturedJobVisibilityExpression, shouldBoostFeaturedJobs } from "@/lib/featured-jobs"
 import type { JobsSearchParams } from "@/lib/job-search"
 import { JOBS_PAGE_SIZE, parseJobsSearchParams } from "@/lib/job-search"
 import { getPublishedJobsFilter } from "@/lib/job-listing-billing"
@@ -32,6 +33,7 @@ type PublicJobFields = Pick<
   | "description"
   | "applyType"
   | "applyUrl"
+  | "isFeatured"
   | "isActive"
   | "listingDurationDays"
   | "paymentStatus"
@@ -162,6 +164,7 @@ function getPublicJobSelectShape(relevance: SQL<number>) {
     description: jobs.description,
     applyType: jobs.applyType,
     applyUrl: jobs.applyUrl,
+    isFeatured: getFeaturedJobVisibilityExpression(),
     isActive: jobs.isActive,
     listingDurationDays: jobs.listingDurationDays,
     paymentStatus: jobs.paymentStatus,
@@ -200,8 +203,12 @@ export async function searchPublicJobs(input: JobsSearchParams): Promise<PublicJ
         : params.sort === "salary_low_to_high"
           ? [asc(getSalaryKnownOrder()), asc(getSalarySortValue()), desc(jobs.createdAt)]
           : params.sort === "relevance" && params.q
-            ? [desc(relevance), desc(jobs.createdAt)]
-            : [desc(jobs.createdAt)]
+            ? shouldBoostFeaturedJobs(params)
+              ? getBoostedRelevanceJobOrderBy(relevance)
+              : [desc(relevance), desc(jobs.createdAt)]
+            : shouldBoostFeaturedJobs(params)
+              ? getBoostedNewestJobOrderBy()
+              : [desc(jobs.createdAt)]
 
   const [countRows, results] = await Promise.all([
     db
@@ -247,7 +254,7 @@ export async function listLatestPublicJobs(limit = 6) {
     .from(jobs)
     .leftJoin(companies, eq(jobs.companyId, companies.id))
     .where(getPublishedJobsFilter())
-    .orderBy(desc(jobs.createdAt))
+    .orderBy(...getBoostedNewestJobOrderBy())
     .limit(limit)
 
   return results.map(({ relevance: _relevance, ...job }) => job)
@@ -324,6 +331,7 @@ export async function getJobBySlug(slug: string) {
       description: jobs.description,
       applyType: jobs.applyType,
       applyUrl: jobs.applyUrl,
+      isFeatured: getFeaturedJobVisibilityExpression(),
       isActive: jobs.isActive,
       listingDurationDays: jobs.listingDurationDays,
       paymentStatus: jobs.paymentStatus,
@@ -356,10 +364,18 @@ export async function getPublicActiveJobBySlug(slug: string) {
 
 export async function listActiveJobsForCompany(companyId: string) {
   return db
-    .select()
+    .select({
+      id: jobs.id,
+      slug: jobs.slug,
+      title: jobs.title,
+      location: jobs.location,
+      category: jobs.category,
+      isFeatured: getFeaturedJobVisibilityExpression()
+    })
     .from(jobs)
+    .leftJoin(companies, eq(jobs.companyId, companies.id))
     .where(and(eq(jobs.companyId, companyId), getPublishedJobsFilter()))
-    .orderBy(desc(jobs.createdAt))
+    .orderBy(...getBoostedNewestJobOrderBy())
 }
 
 export async function countPublishedJobsForCompany(companyId: string, input?: { excludeJobId?: string | null; now?: Date }) {

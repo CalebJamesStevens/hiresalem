@@ -39,6 +39,18 @@ const companyRows = [
     galleryImageUrl1: "https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=1200&q=80",
     galleryImageUrl2: "https://images.unsplash.com/photo-1517048676732-d65bc937f952?auto=format&fit=crop&w=1200&q=80",
     planOverrideReason: "Pilot enhanced profile account for local testing"
+  },
+  {
+    id: "33333333-3333-3333-3333-333333333333",
+    slug: "cherry-city-staffing",
+    name: "Cherry City Staffing",
+    ownerAuthId: "kc-business-003",
+    logoUrl: "https://example.com/assets/cherry-city-staffing-logo.png",
+    shortDescription: "Cherry City Staffing helps Salem employers fill operations, support, and skilled-trades roles quickly.",
+    website: "https://example.com/cherry-city-staffing",
+    location: "Salem, OR",
+    plan: "business_pro" as const,
+    planOverrideReason: "Pilot featured-job account for local testing"
   }
 ] as const
 
@@ -151,6 +163,30 @@ const jobRows = [
     description: "Support payroll and monthly financial close operations.",
     applyType: "external" as const,
     applyUrl: "https://example.com/jobs/accounting-specialist",
+    isActive: true
+  },
+  {
+    id: "aaaaaaa6-aaaa-aaaa-aaaa-aaaaaaaaaaa6",
+    slug: "customer-support-lead-salem",
+    title: "Customer Support Lead",
+    ownerAuthId: "kc-business-003",
+    companyId: "33333333-3333-3333-3333-333333333333",
+    location: "Salem, OR",
+    streetAddress: "255 State St",
+    postalCode: "97301",
+    salary: "$62k - $74k",
+    workMode: "hybrid" as const,
+    employmentType: "full_time" as const,
+    category: "customer_support" as const,
+    salaryMin: 62000,
+    salaryMax: 74000,
+    salaryCurrency: "USD",
+    salaryInterval: "year" as const,
+    description: "Lead frontline support operations, coach a small team, and improve customer response workflows.",
+    applyType: "onsite" as const,
+    applyUrl: null,
+    isFeatured: true,
+    featuredAt: new Date("2026-03-12T18:00:00.000Z"),
     isActive: true
   }
 ] as const

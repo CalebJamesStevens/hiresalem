@@ -4,6 +4,7 @@ import { getPublishedJobsFilter, JOB_LISTING_DEFAULT_DAYS } from "@/lib/job-list
 import { getSessionSafe } from "@/lib/session"
 import { requireApiRoles } from "@/lib/api-auth"
 import { db } from "@/lib/db"
+import { FEATURED_JOB_PLAN_MESSAGE, getNextFeaturedAt, validateFeaturedJobRequest } from "@/lib/featured-jobs"
 import { syncGoogleIndexingForJobTransition } from "@/lib/job-indexing"
 import { countPublishedJobsForCompany } from "@/lib/jobs"
 import { checkRateLimit } from "@/lib/rate-limit"
@@ -73,6 +74,12 @@ export async function POST(req: Request) {
 
   const now = new Date()
   const companyPlan = !isAdmin && companyForJob ? resolveCompanyPlan(companyForJob) : null
+  const featuredJobValidation = isAdmin ? { ok: true as const } : validateFeaturedJobRequest(parsed.data.isFeatured, companyPlan)
+
+  if (!featuredJobValidation.ok) {
+    return Response.json({ error: FEATURED_JOB_PLAN_MESSAGE }, { status: 400 })
+  }
+
   const listingDurationDays =
     !isAdmin && companyPlan && !companyPlan.entitlements.allowsLongerJobDuration ? JOB_LISTING_DEFAULT_DAYS : parsed.data.listingDurationDays
   const jobValues = buildJobWriteValues(parsed.data, companyForJob?.id ?? null)
@@ -92,6 +99,10 @@ export async function POST(req: Request) {
         ownerAuthId: authResult.user.id,
         ...jobValues,
         isActive: true,
+        featuredAt: getNextFeaturedAt({
+          requestedIsFeatured: jobValues.isFeatured,
+          now
+        }),
         listingDurationDays,
         paymentStatus: "paid",
         activatedAt: now,
@@ -132,6 +143,10 @@ export async function POST(req: Request) {
       ownerAuthId: authResult.user.id,
       ...jobValues,
       isActive: shouldPublishNow,
+      featuredAt: getNextFeaturedAt({
+        requestedIsFeatured: jobValues.isFeatured,
+        now
+      }),
       listingDurationDays,
       paymentStatus: "paid",
       activatedAt: shouldPublishNow ? now : null,

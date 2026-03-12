@@ -16,6 +16,7 @@ const countPublishedJobsForCompanyMock = mock(async () => 0)
 const parsedJobInput = {
   title: "Operations Manager",
   slug: "operations-manager",
+  isFeatured: false,
   listingDurationDays: 45,
   website: "",
   applyType: "onsite"
@@ -41,7 +42,8 @@ const buildJobWriteValuesMock = mock(() => ({
   jobLocationRegion: "OR",
   jobLocationCountry: "US",
   applyType: "onsite" as const,
-  applyUrl: null
+  applyUrl: null,
+  isFeatured: false
 }))
 
 const publicationReasonsMock = mock(() => [])
@@ -73,7 +75,7 @@ mock.module("@/lib/api-auth", () => ({
 }))
 
 mock.module("@/lib/authz", () => ({
-  hasRole: () => false,
+  hasRole: (roles: string[], role: string) => roles.includes(role),
   normalizeRoles: (roles: string[]) => roles
 }))
 
@@ -153,6 +155,48 @@ describe("POST /api/jobs", () => {
     expect(insertMock).not.toHaveBeenCalled()
   })
 
+  test("blocks featured placement on the free plan", async () => {
+    jobWriteSchemaSafeParseMock.mockReturnValueOnce({
+      success: true as const,
+      data: {
+        ...parsedJobInput,
+        isFeatured: true
+      }
+    })
+    buildJobWriteValuesMock.mockReturnValueOnce({
+      companyId: "company-1",
+      description: "Run daily operations.",
+      workMode: "onsite" as const,
+      jobLocationCity: "Salem",
+      jobLocationRegion: "OR",
+      jobLocationCountry: "US",
+      applyType: "onsite" as const,
+      applyUrl: null,
+      isFeatured: true
+    })
+    const { POST } = await import("@/app/api/jobs/route")
+
+    const response = await POST(
+      new Request("http://localhost:3000/api/jobs", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          ...parsedJobInput,
+          isFeatured: true,
+          submissionAction: "publish"
+        })
+      })
+    )
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({
+      error: "Featured placement is available on Featured Job or Business Pro."
+    })
+    expect(insertMock).not.toHaveBeenCalled()
+  })
+
   test("allows saving a draft even when the live-job limit is reached and forces the free duration", async () => {
     countPublishedJobsForCompanyMock.mockResolvedValueOnce(3)
     const { POST } = await import("@/app/api/jobs/route")
@@ -179,5 +223,54 @@ describe("POST /api/jobs", () => {
     expect(payload?.activatedAt).toBeNull()
     expect(payload?.expiresAt).toBeNull()
     expect(syncGoogleIndexingMock).not.toHaveBeenCalled()
+  })
+
+  test("persists featured placement and longer duration when the request is allowed", async () => {
+    requireApiRolesMock.mockResolvedValue({
+      user: {
+        id: "admin-1",
+        email: "admin@example.com",
+        roles: ["admin"]
+      }
+    })
+    jobWriteSchemaSafeParseMock.mockReturnValue({
+      success: true as const,
+      data: {
+        ...parsedJobInput,
+        isFeatured: true
+      }
+    })
+    buildJobWriteValuesMock.mockReturnValue({
+      companyId: "company-1",
+      description: "Run daily operations.",
+      workMode: "onsite" as const,
+      jobLocationCity: "Salem",
+      jobLocationRegion: "OR",
+      jobLocationCountry: "US",
+      applyType: "onsite" as const,
+      applyUrl: null,
+      isFeatured: true
+    })
+    const { POST } = await import("@/app/api/jobs/route")
+
+    const response = await POST(
+      new Request("http://localhost:3000/api/jobs", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          ...parsedJobInput,
+          isFeatured: true,
+          submissionAction: "publish"
+        })
+      })
+    )
+
+    expect(response.status).toBe(201)
+    const [payload] = insertValuesMock.mock.calls.at(-1) ?? []
+    expect(payload?.isFeatured).toBe(true)
+    expect(payload?.featuredAt).toBeInstanceOf(Date)
+    expect(payload?.listingDurationDays).toBe(45)
   })
 })

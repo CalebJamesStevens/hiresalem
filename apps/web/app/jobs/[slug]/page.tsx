@@ -2,6 +2,7 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 
 import { Breadcrumbs } from "@/components/breadcrumbs"
+import { FeaturedJobBadge } from "@/components/featured-job-badge"
 import { JsonLd } from "@/components/json-ld"
 import { JobList } from "@/components/job-list"
 import { MarkdownContent } from "@/components/markdown-content"
@@ -242,10 +243,11 @@ export default async function JobPage({ params }: JobPageProps) {
         jobPosting.jsonLd ? <JsonLd data={jobPosting.jsonLd} /> : null
       ) : null}
 
-      <section className="min-w-0 overflow-hidden rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+      <section className={`min-w-0 overflow-hidden rounded-[2rem] border p-6 shadow-sm ${job.isFeatured ? "border-amber-200 bg-amber-50/40" : "border-slate-200 bg-white"}`}>
         <div className="min-w-0 space-y-4">
           <Breadcrumbs items={breadcrumbs} />
           <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+            {job.isFeatured ? <FeaturedJobBadge /> : null}
             <span className="rounded-full bg-slate-100 px-3 py-1">{job.applyType === "onsite" ? "Apply in app" : "External apply"}</span>
             <span className="rounded-full bg-slate-100 px-3 py-1">{statusLabel}</span>
             {workModeLabel ? <span className="rounded-full bg-slate-100 px-3 py-1">{workModeLabel}</span> : null}

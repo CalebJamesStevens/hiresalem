@@ -2,6 +2,7 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 
 import { Breadcrumbs } from "@/components/breadcrumbs"
+import { FeaturedJobBadge } from "@/components/featured-job-badge"
 import { JsonLd } from "@/components/json-ld"
 import { MarkdownContent } from "@/components/markdown-content"
 import { buildCompanyProfilePageDescription, getCompanyBySlug, getCompanyProfileInitials, getCompanyPublicProfileContent } from "@/lib/companies"
@@ -333,8 +334,12 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
 
         <div className="grid gap-4">
           {companyJobs.map((job) => (
-            <article key={job.id} className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
+            <article
+              key={job.id}
+              className={`rounded-[2rem] border p-5 shadow-sm ${job.isFeatured ? "border-amber-200 bg-amber-50/40" : "border-slate-200 bg-white"}`}
+            >
               <div className="space-y-2">
+                {job.isFeatured ? <FeaturedJobBadge /> : null}
                 <Link href={`/jobs/${job.slug}`} className="text-xl font-semibold text-slate-900 underline underline-offset-4">
                   {job.title}
                 </Link>

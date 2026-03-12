@@ -18,6 +18,7 @@ export type EmployerApplicantJob = {
   title: string
   location: string | null
   applyType: (typeof applyTypeEnum.enumValues)[number]
+  isFeatured: boolean
   isActive: boolean
   paymentStatus: (typeof jobPaymentStatusEnum.enumValues)[number]
   activatedAt: Date | null
@@ -131,6 +132,7 @@ export async function listEmployerApplicantJobs(viewer: EmployerViewer) {
       title: jobs.title,
       location: jobs.location,
       applyType: jobs.applyType,
+      isFeatured: jobs.isFeatured,
       isActive: jobs.isActive,
       paymentStatus: jobs.paymentStatus,
       activatedAt: jobs.activatedAt,
@@ -139,7 +141,19 @@ export async function listEmployerApplicantJobs(viewer: EmployerViewer) {
     })
     .from(jobs)
     .leftJoin(applications, eq(applications.jobId, jobs.id))
-    .groupBy(jobs.id, jobs.slug, jobs.title, jobs.location, jobs.applyType, jobs.isActive, jobs.paymentStatus, jobs.activatedAt, jobs.expiresAt, jobs.createdAt)
+    .groupBy(
+      jobs.id,
+      jobs.slug,
+      jobs.title,
+      jobs.location,
+      jobs.applyType,
+      jobs.isFeatured,
+      jobs.isActive,
+      jobs.paymentStatus,
+      jobs.activatedAt,
+      jobs.expiresAt,
+      jobs.createdAt
+    )
     .orderBy(desc(jobs.createdAt))
 
   return viewer.isAdmin ? await query : await query.where(eq(jobs.ownerAuthId, viewer.id))

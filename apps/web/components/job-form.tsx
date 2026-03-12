@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useRef, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 
+import { FeaturedJobBadge } from "@/components/featured-job-badge"
 import { MarkdownContent } from "@/components/markdown-content"
 import type { EmployerJobLifecycleStatus } from "@/lib/job-listing-billing"
 import { categoryOptions, employmentTypeOptions, salaryIntervalOptions, workModeOptions } from "@/lib/job-search"
@@ -57,6 +58,7 @@ type JobFormInitialValues = {
   description: string | null
   applyType: ApplyType
   applyUrl: string | null
+  isFeatured: boolean
   listingDurationDays: number
   companyId: string | null
 }
@@ -72,6 +74,7 @@ type PreviewState = {
   description: string | null
   applyType: ApplyType
   applyUrl: string | null
+  isFeatured: boolean
 }
 
 function formatOptionLabel<TValue extends string>(value: TValue | "", options: ReadonlyArray<{ value: TValue | "any"; label: string }>) {
@@ -119,7 +122,8 @@ function buildPreviewState(formData: FormData, existingCompanies: ExistingCompan
     salary: String(formData.get("salary") ?? "").trim() || null,
     description: String(formData.get("description") ?? "").trim() || null,
     applyType: String(formData.get("applyType") ?? "onsite") as ApplyType,
-    applyUrl: String(formData.get("applyUrl") ?? "").trim() || null
+    applyUrl: String(formData.get("applyUrl") ?? "").trim() || null,
+    isFeatured: Boolean(formData.get("isFeatured"))
   }
 }
 
@@ -137,7 +141,9 @@ export function JobForm({
   activeJobsCount = 0,
   activeJobsLimit = null,
   planLabel = null,
-  initialStatus = null
+  initialStatus = null,
+  canFeatureJob = false,
+  featuredPlacementEligible = false
 }: {
   disabled?: boolean
   requiresPayment?: boolean
@@ -153,6 +159,8 @@ export function JobForm({
   activeJobsLimit?: number | null
   planLabel?: string | null
   initialStatus?: EmployerJobLifecycleStatus | null
+  canFeatureJob?: boolean
+  featuredPlacementEligible?: boolean
 }) {
   const router = useRouter()
   const formRef = useRef<HTMLFormElement>(null)
@@ -209,6 +217,7 @@ export function JobForm({
         description: String(formData.get("description") ?? ""),
         applyType: nextApplyType,
         applyUrl: nextApplyType === "external" ? applyUrl : undefined,
+        isFeatured: Boolean(formData.get("isFeatured")),
         listingDurationDays: String(formData.get("listingDurationDays") ?? effectiveListingDurationDays),
         companyId: companySelection && !isNewCompany ? companySelection : undefined,
         newCompanyName: isNewCompany ? String(formData.get("newCompanyName") ?? "") : undefined,
@@ -584,6 +593,43 @@ export function JobForm({
           ) : null}
         </div>
 
+        {canFeatureJob ? (
+          <div className="space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <FeaturedJobBadge inactive={!featuredPlacementEligible} />
+              <p className="text-sm font-medium text-slate-900">Give this role stronger visibility on supported HireSalem listing surfaces.</p>
+            </div>
+            <label className="flex items-start gap-3">
+              <input
+                id="isFeatured"
+                name="isFeatured"
+                type="checkbox"
+                value="true"
+                defaultChecked={initialValues?.isFeatured ?? false}
+                disabled={disabled}
+                className="mt-1 h-4 w-4 rounded border-slate-300"
+              />
+              <span className="text-sm text-slate-700">
+                Mark this job as featured to add a featured badge and boosted placement where HireSalem supports it.
+              </span>
+            </label>
+            {!featuredPlacementEligible ? (
+              <p className="text-sm text-slate-700">
+                Boosted placement is currently available on Featured Job or Business Pro. You can keep this flag on an existing featured job or remove it
+                here.
+              </p>
+            ) : null}
+          </div>
+        ) : !isAdmin ? (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+            <p className="font-medium text-amber-950">Featured placement is locked on this plan.</p>
+            <p className="mt-1">Add a featured badge and boosted placement with Featured Job or Business Pro.</p>
+            <Link href="/dashboard/plan" className="mt-3 inline-flex font-medium underline underline-offset-4">
+              View plan options
+            </Link>
+          </div>
+        ) : null}
+
         <div className="space-y-1">
           <label htmlFor="applyType" className="text-sm font-medium">
             Apply method
@@ -659,6 +705,7 @@ export function JobForm({
           <div className="space-y-2">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Preview</p>
             <div className="space-y-1">
+              {preview.isFeatured ? <FeaturedJobBadge /> : null}
               <h2 className="text-2xl font-bold text-slate-950">{preview.title}</h2>
               {preview.companyName ? <p className="text-sm font-medium text-slate-700">{preview.companyName}</p> : null}
               <p className="text-sm text-slate-600">{preview.location ?? "Salem, OR"}</p>

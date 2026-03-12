@@ -1,5 +1,6 @@
 import Link from "next/link"
 
+import { FeaturedJobBadge } from "@/components/featured-job-badge"
 import { categoryOptions, employmentTypeOptions, workModeOptions } from "@/lib/job-search"
 import type { PublicJobSearchResult } from "@/lib/jobs"
 import { markdownToPlainText } from "@/lib/markdown"
@@ -57,9 +58,10 @@ export function JobCard({ job }: { job: PublicJobSearchResult }) {
   ].filter(Boolean)
 
   return (
-    <article className="rounded-2xl border bg-white p-5 shadow-sm">
+    <article className={`rounded-2xl border p-5 shadow-sm ${job.isFeatured ? "border-amber-200 bg-amber-50/50" : "bg-white"}`}>
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div className="space-y-2">
+          {job.isFeatured ? <FeaturedJobBadge /> : null}
           <div className="space-y-1">
             <h2 className="text-xl font-semibold text-slate-900">
               <Link href={`/jobs/${job.slug}`} className="underline underline-offset-4">

@@ -3,6 +3,7 @@ import { z } from "zod"
 
 import { hasRole, normalizeRoles } from "@/lib/authz"
 import { getCompanyById } from "@/lib/companies"
+import { FEATURED_JOB_PLAN_MESSAGE, getNextFeaturedAt, validateFeaturedJobRequest } from "@/lib/featured-jobs"
 import { getJobStatusLabel, isJobExpired, isJobPublished, JOB_LISTING_DEFAULT_DAYS } from "@/lib/job-listing-billing"
 import { countPublishedJobsForCompany } from "@/lib/jobs"
 import {
@@ -20,9 +21,19 @@ import { syncGoogleIndexingForJobTransition } from "@/lib/job-indexing"
 import { isWithinCompanyActiveJobLimit, resolveCompanyPlan } from "@repo/db/plans"
 import { jobs } from "@repo/db/schema/jobs"
 
-const updateJobSchema = z.object({
-  isActive: z.boolean()
-})
+const updateJobSchema = z
+  .object({
+    isActive: z.boolean().optional(),
+    isFeatured: z.boolean().optional()
+  })
+  .superRefine((value, ctx) => {
+    if (typeof value.isActive !== "boolean" && typeof value.isFeatured !== "boolean") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "At least one job update field is required."
+      })
+    }
+  })
 
 type JobRouteContext = {
   params: Promise<{
@@ -79,6 +90,8 @@ export async function PATCH(req: Request, { params }: JobRouteContext) {
   }
 
   const now = new Date()
+  const company = !isAdmin && existing.companyId ? await getCompanyById(existing.companyId) : null
+  const companyPlan = company ? resolveCompanyPlan(company) : null
 
   if (parsed.data.isActive) {
     if (existing.paymentStatus !== "paid") {
@@ -94,33 +107,40 @@ export async function PATCH(req: Request, { params }: JobRouteContext) {
       return Response.json({ error: publicationValidationMessage }, { status: 400 })
     }
 
-    if (!isAdmin && existing.companyId) {
-      const company = await getCompanyById(existing.companyId)
+    if (!isAdmin && company && companyPlan) {
+      const activeJobCount = await countPublishedJobsForCompany(company.id, { excludeJobId: existing.id, now })
+      const nextActiveJobCount = activeJobCount + 1
+      const maxActiveJobs = companyPlan.entitlements.maxActiveJobs
 
-      if (company) {
-        const companyPlan = resolveCompanyPlan(company)
-        const activeJobCount = await countPublishedJobsForCompany(company.id, { excludeJobId: existing.id, now })
-        const nextActiveJobCount = activeJobCount + 1
-        const maxActiveJobs = companyPlan.entitlements.maxActiveJobs
-
-        if (!isWithinCompanyActiveJobLimit(nextActiveJobCount, companyPlan.effectivePlanId)) {
-          return Response.json(
-            {
-              error:
-                maxActiveJobs === null
-                  ? "This plan cannot publish another live job right now."
-                  : `Free plan allows up to ${maxActiveJobs} live jobs. Close one live job before publishing another.`
-            },
-            { status: 400 }
-          )
-        }
+      if (!isWithinCompanyActiveJobLimit(nextActiveJobCount, companyPlan.effectivePlanId)) {
+        return Response.json(
+          {
+            error:
+              maxActiveJobs === null
+                ? "This plan cannot publish another live job right now."
+                : `Free plan allows up to ${maxActiveJobs} live jobs. Close one live job before publishing another.`
+          },
+          { status: 400 }
+        )
       }
     }
   }
 
-  const [updated] = await db
-    .update(jobs)
-    .set(
+  if (typeof parsed.data.isFeatured === "boolean" && !isAdmin) {
+    const featuredJobValidation = validateFeaturedJobRequest(parsed.data.isFeatured, companyPlan, {
+      allowExistingFeatured: existing.isFeatured
+    })
+
+    if (!featuredJobValidation.ok) {
+      return Response.json({ error: FEATURED_JOB_PLAN_MESSAGE }, { status: 400 })
+    }
+  }
+
+  const nextValues: Partial<typeof jobs.$inferInsert> = {}
+
+  if (typeof parsed.data.isActive === "boolean") {
+    Object.assign(
+      nextValues,
       parsed.data.isActive
         ? {
             isActive: true,
@@ -129,13 +149,32 @@ export async function PATCH(req: Request, { params }: JobRouteContext) {
           }
         : { isActive: false }
     )
+  }
+
+  if (typeof parsed.data.isFeatured === "boolean") {
+    Object.assign(nextValues, {
+      isFeatured: parsed.data.isFeatured,
+      featuredAt: getNextFeaturedAt({
+        requestedIsFeatured: parsed.data.isFeatured,
+        existingIsFeatured: existing.isFeatured,
+        featuredAt: existing.featuredAt,
+        now
+      })
+    })
+  }
+
+  const [updated] = await db
+    .update(jobs)
+    .set(nextValues)
     .where(eq(jobs.id, id))
     .returning()
 
-  await syncGoogleIndexingForJobTransition({
-    before: existing,
-    after: updated ?? existing
-  })
+  if (typeof parsed.data.isActive === "boolean") {
+    await syncGoogleIndexingForJobTransition({
+      before: existing,
+      after: updated ?? existing
+    })
+  }
 
   return Response.json(updated)
 }
@@ -183,8 +222,22 @@ export async function PUT(req: Request, { params }: JobRouteContext) {
   }
 
   const companyPlan = !isAdmin && companyForJob ? resolveCompanyPlan(companyForJob) : null
+  const featuredJobValidation = isAdmin
+    ? { ok: true as const }
+    : validateFeaturedJobRequest(parsed.data.isFeatured, companyPlan, {
+        allowExistingFeatured: existing.isFeatured
+      })
+
+  if (!featuredJobValidation.ok) {
+    return Response.json({ error: FEATURED_JOB_PLAN_MESSAGE }, { status: 400 })
+  }
+
   const nextListingDurationDays =
-    !isAdmin && companyPlan && !companyPlan.entitlements.allowsLongerJobDuration ? JOB_LISTING_DEFAULT_DAYS : existing.listingDurationDays
+    existing.activatedAt
+      ? existing.listingDurationDays
+      : !isAdmin && companyPlan && !companyPlan.entitlements.allowsLongerJobDuration
+        ? JOB_LISTING_DEFAULT_DAYS
+        : parsed.data.listingDurationDays
   const nextValues = buildJobWriteValues(parsed.data, companyForJob?.id ?? null)
   const shouldPublishNow = submissionAction === "publish"
   const shouldValidatePublication = existing.isActive || shouldPublishNow
@@ -224,6 +277,12 @@ export async function PUT(req: Request, { params }: JobRouteContext) {
       isActive: shouldPublishNow ? true : existing.isActive,
       paymentStatus: existing.paymentStatus,
       activatedAt: nextActivatedAt,
+      featuredAt: getNextFeaturedAt({
+        requestedIsFeatured: nextValues.isFeatured,
+        existingIsFeatured: existing.isFeatured,
+        featuredAt: existing.featuredAt,
+        now
+      }),
       listingDurationDays: nextListingDurationDays,
       expiresAt:
         nextActivatedAt && (shouldRecalculateExpiration || shouldPublishNow)

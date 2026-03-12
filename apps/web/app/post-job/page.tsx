@@ -24,6 +24,8 @@ export default async function PostJobPage({ searchParams }: PostJobPageProps) {
   const resolvedPlan = company ? resolveCompanyPlan(company) : null
   const activeJobsCount = company ? await countPublishedJobsForCompany(company.id) : 0
   const activeJobsLimit = resolvedPlan?.entitlements.maxActiveJobs ?? null
+  const featuredPlacementEligible = Boolean(resolvedPlan?.entitlements.allowsFeaturedJobs && resolvedPlan?.entitlements.allowsBoostedJobPlacement)
+  const flexibleListingDurationEnabled = Boolean(resolvedPlan?.entitlements.allowsLongerJobDuration)
   const publishLimitReached = activeJobsLimit !== null && activeJobsCount >= activeJobsLimit
   const lockedJobFeatures = resolvedPlan ? getLockedCompanyFeatures(resolvedPlan, employerJobLockedFeatureIds) : []
   const publishDisabledMessage = publishLimitReached
@@ -72,10 +74,12 @@ export default async function PostJobPage({ searchParams }: PostJobPageProps) {
         canSaveDraft={!isAdmin}
         canPublish={isAdmin || !publishLimitReached}
         publishDisabledMessage={publishDisabledMessage}
-        fixedListingDurationDays={!isAdmin ? JOB_LISTING_DEFAULT_DAYS : null}
+        fixedListingDurationDays={!isAdmin && !flexibleListingDurationEnabled ? JOB_LISTING_DEFAULT_DAYS : null}
         activeJobsCount={activeJobsCount}
         activeJobsLimit={activeJobsLimit}
         planLabel={resolvedPlan?.label ?? null}
+        canFeatureJob={isAdmin || featuredPlacementEligible}
+        featuredPlacementEligible={isAdmin || featuredPlacementEligible}
       />
     </section>
   )

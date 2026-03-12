@@ -1,3 +1,4 @@
+import { FeaturedJobBadge } from "@/components/featured-job-badge"
 import Link from "next/link"
 
 import { JobModerationActions } from "@/components/job-moderation-actions"
@@ -32,6 +33,7 @@ export default async function DashboardJobsPage({ searchParams }: DashboardJobsP
   const resolvedPlan = company ? resolveCompanyPlan(company) : null
   const activeJobsCount = jobs.filter((job) => getEmployerJobLifecycleStatus(job) === "live").length
   const activeJobsLimit = resolvedPlan?.entitlements.maxActiveJobs ?? null
+  const featuredPlacementEligible = Boolean(resolvedPlan?.entitlements.allowsFeaturedJobs && resolvedPlan?.entitlements.allowsBoostedJobPlacement)
   const publishLimitReached = activeJobsLimit !== null && activeJobsCount >= activeJobsLimit
   const lockedJobFeatures = resolvedPlan ? getLockedCompanyFeatures(resolvedPlan, employerJobLockedFeatureIds) : []
 
@@ -97,6 +99,7 @@ export default async function DashboardJobsPage({ searchParams }: DashboardJobsP
           <article key={job.id} className="rounded border bg-white p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
+                {job.isFeatured ? <FeaturedJobBadge inactive={!isAdmin && !featuredPlacementEligible} /> : null}
                 <Link href={`/jobs/${job.slug}`} className="font-semibold underline">
                   {job.title}
                 </Link>
@@ -113,7 +116,9 @@ export default async function DashboardJobsPage({ searchParams }: DashboardJobsP
               <JobModerationActions
                 jobId={job.id}
                 jobStatus={getEmployerJobLifecycleStatus(job)}
+                isFeatured={job.isFeatured}
                 canActivate={job.paymentStatus === "paid" && !isJobExpired(job) && (!publishLimitReached || job.isActive)}
+                canToggleFeatured={isAdmin || featuredPlacementEligible}
               />
             </div>
           </article>
