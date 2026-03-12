@@ -10,7 +10,7 @@ type CollectionItem = {
   path: string
 }
 
-type JobLocationInput = {
+export type JobLocationInput = {
   city: string
   region: string
   country: string
@@ -30,7 +30,6 @@ type JobPostingInput = {
   jobLocation?: JobLocationInput | null
   applicantLocationCountry?: string | null
   isRemote?: boolean
-  directApply?: boolean | null
   baseSalary?: {
     currency: string
     minValue?: number | null
@@ -72,7 +71,7 @@ function findSupportedCity(value: string) {
   return matches[0]?.city ?? null
 }
 
-export function normalizeJobLocation(location?: string | null): JobLocationInput | null {
+export function inferJobLocationFromLegacyText(location?: string | null): JobLocationInput | null {
   if (!location) {
     return null
   }
@@ -118,6 +117,8 @@ export function normalizeJobLocation(location?: string | null): JobLocationInput
     country: "US"
   }
 }
+
+export const normalizeJobLocation = inferJobLocationFromLegacyText
 
 export function buildOrganizationJsonLd() {
   return {
@@ -314,6 +315,5 @@ export function buildJobPostingJsonLd(input: JobPostingInput) {
       : undefined,
     mainEntityOfPage: absoluteUrl(input.path),
     url: absoluteUrl(input.path),
-    ...(input.directApply === null || input.directApply === undefined ? {} : { directApply: input.directApply })
   }
 }

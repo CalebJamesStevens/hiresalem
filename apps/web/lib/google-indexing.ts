@@ -58,6 +58,20 @@ export function getGoogleIndexingServiceAccount(env: NodeJS.ProcessEnv = process
   }
 }
 
+export function getGoogleIndexingConfigurationStatus(env: NodeJS.ProcessEnv = process.env) {
+  try {
+    return {
+      configured: Boolean(getGoogleIndexingServiceAccount(env)),
+      error: null
+    }
+  } catch (error) {
+    return {
+      configured: false,
+      error: error instanceof Error ? error.message : "Invalid Google Indexing API configuration"
+    }
+  }
+}
+
 export function buildGoogleServiceAccountJwt(
   serviceAccount: GoogleIndexingServiceAccount,
   now = new Date()
@@ -159,4 +173,3 @@ export async function publishGoogleIndexingNotification(input: {
     skipped: false as const
   }
 }
-

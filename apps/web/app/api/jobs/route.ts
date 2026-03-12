@@ -14,6 +14,8 @@ import {
   buildJobWriteValues,
   calculateJobExpiration,
   calculateJobListingPrice,
+  getJobPublicationValidationMessage,
+  getJobPublicationValidationReasons,
   jobWriteSchema,
   resolveCompanyForJob,
   toJobSlug
@@ -72,6 +74,12 @@ export async function POST(req: Request) {
 
   const now = new Date()
   const jobValues = buildJobWriteValues(parsed.data, companyForJob?.id ?? null)
+  const publicationValidationReasons = getJobPublicationValidationReasons(jobValues)
+  const publicationValidationMessage = getJobPublicationValidationMessage(publicationValidationReasons)
+
+  if (publicationValidationMessage) {
+    return Response.json({ error: publicationValidationMessage }, { status: 400 })
+  }
 
   if (isAdmin) {
     const [created] = await db

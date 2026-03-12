@@ -8,6 +8,11 @@ type ImportSummary = {
   updatedCompanies: number
   insertedJobs: number
   updatedJobs: number
+  skippedJobs: Array<{
+    slug: string
+    title: string
+    reasons: string[]
+  }>
 }
 
 function formatFileSize(bytes: number) {
@@ -66,7 +71,8 @@ export function AdminJobImportPanel() {
         insertedCompanies: body.insertedCompanies,
         updatedCompanies: body.updatedCompanies,
         insertedJobs: body.insertedJobs,
-        updatedJobs: body.updatedJobs
+        updatedJobs: body.updatedJobs,
+        skippedJobs: body.skippedJobs ?? []
       })
       setStatus(body.dryRun ? "Dry run completed." : "Import completed.")
     })
@@ -151,7 +157,7 @@ export function AdminJobImportPanel() {
             </p>
           </div>
 
-          <dl className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <dl className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <dt className="text-sm text-slate-500">Companies inserted</dt>
               <dd className="mt-2 text-2xl font-semibold text-slate-950">{summary.insertedCompanies}</dd>
@@ -168,7 +174,25 @@ export function AdminJobImportPanel() {
               <dt className="text-sm text-slate-500">Jobs updated</dt>
               <dd className="mt-2 text-2xl font-semibold text-slate-950">{summary.updatedJobs}</dd>
             </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <dt className="text-sm text-slate-500">Jobs skipped</dt>
+              <dd className="mt-2 text-2xl font-semibold text-slate-950">{summary.skippedJobs.length}</dd>
+            </div>
           </dl>
+
+          {summary.skippedJobs.length > 0 ? (
+            <div className="mt-6 space-y-3">
+              <h3 className="text-sm font-semibold uppercase tracking-[0.12em] text-slate-500">Skipped jobs</h3>
+              {summary.skippedJobs.map((job) => (
+                <article key={job.slug} className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+                  <p className="font-medium">
+                    {job.title} <span className="font-normal text-amber-800">({job.slug})</span>
+                  </p>
+                  <p className="mt-1">{job.reasons.join(" ")}</p>
+                </article>
+              ))}
+            </div>
+          ) : null}
         </section>
       ) : null}
     </div>

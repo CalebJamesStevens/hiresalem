@@ -2,7 +2,7 @@ import { generateKeyPairSync } from "node:crypto"
 
 import { describe, expect, test } from "bun:test"
 
-import { buildGoogleServiceAccountJwt, getGoogleIndexingServiceAccount } from "@/lib/google-indexing"
+import { buildGoogleServiceAccountJwt, getGoogleIndexingConfigurationStatus, getGoogleIndexingServiceAccount } from "@/lib/google-indexing"
 
 const privateKey = generateKeyPairSync("rsa", {
   modulusLength: 2048,
@@ -44,6 +44,17 @@ describe("google indexing config", () => {
     ).toEqual({
       clientEmail: "json@example.iam.gserviceaccount.com",
       privateKey: "line-1\nline-2"
+    })
+  })
+
+  test("reports configuration status without throwing", () => {
+    expect(
+      getGoogleIndexingConfigurationStatus({
+        GOOGLE_INDEXING_API_CLIENT_EMAIL: "missing-private-key@example.iam.gserviceaccount.com"
+      } as NodeJS.ProcessEnv)
+    ).toEqual({
+      configured: false,
+      error: "GOOGLE_INDEXING_API_CLIENT_EMAIL and GOOGLE_INDEXING_API_PRIVATE_KEY must both be configured"
     })
   })
 })

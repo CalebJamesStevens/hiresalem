@@ -29,6 +29,9 @@ type JobFormInitialValues = {
   slug: string
   title: string
   location: string | null
+  jobLocationCity: string | null
+  jobLocationRegion: string | null
+  jobLocationCountry: string | null
   streetAddress: string | null
   postalCode: string | null
   salary: string | null
@@ -143,6 +146,7 @@ export function JobForm({
   const [status, setStatus] = useState<string | null>(null)
   const [preview, setPreview] = useState<PreviewState | null>(null)
   const [applyType, setApplyType] = useState<ApplyType>(initialValues?.applyType ?? "onsite")
+  const [workMode, setWorkMode] = useState<"" | "onsite" | "hybrid" | "remote">(initialValues?.workMode ?? "")
   const [companySelection, setCompanySelection] = useState<CompanySelection>(isAdmin ? (initialValues?.companyId ?? "") : "")
   const [listingDurationDays, setListingDurationDays] = useState(initialValues?.listingDurationDays ?? JOB_LISTING_DEFAULT_DAYS)
   const [isPending, startTransition] = useTransition()
@@ -172,6 +176,9 @@ export function JobForm({
       const payload = {
         title: String(formData.get("title") ?? ""),
         location: String(formData.get("location") ?? ""),
+        jobLocationCity: String(formData.get("jobLocationCity") ?? "") || undefined,
+        jobLocationRegion: String(formData.get("jobLocationRegion") ?? "") || undefined,
+        jobLocationCountry: String(formData.get("jobLocationCountry") ?? "") || undefined,
         streetAddress: String(formData.get("streetAddress") ?? "") || undefined,
         postalCode: String(formData.get("postalCode") ?? "") || undefined,
         salary: String(formData.get("salary") ?? ""),
@@ -241,7 +248,7 @@ export function JobForm({
                 onChange={(event) => setCompanySelection(event.target.value)}
                 className="w-full rounded border px-3 py-2"
               >
-                <option value="">No company</option>
+                <option value="">Select company</option>
                 <option value="__new__">Add new company</option>
                 {existingCompanies.map((company) => (
                   <option key={company.id} value={company.id}>
@@ -289,6 +296,51 @@ export function JobForm({
           <p className="text-xs text-slate-500">Use city and state at minimum, like "Salem, OR".</p>
         </div>
 
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="space-y-1">
+            <label htmlFor="jobLocationCity" className="text-sm font-medium">
+              Schema city
+            </label>
+            <input
+              id="jobLocationCity"
+              name="jobLocationCity"
+              required={workMode !== "remote"}
+              defaultValue={initialValues?.jobLocationCity ?? ""}
+              disabled={disabled}
+              className="w-full rounded border px-3 py-2"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="jobLocationRegion" className="text-sm font-medium">
+              Schema region
+            </label>
+            <input
+              id="jobLocationRegion"
+              name="jobLocationRegion"
+              required={workMode !== "remote"}
+              defaultValue={initialValues?.jobLocationRegion ?? "OR"}
+              disabled={disabled}
+              className="w-full rounded border px-3 py-2"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="jobLocationCountry" className="text-sm font-medium">
+              Schema country
+            </label>
+            <input
+              id="jobLocationCountry"
+              name="jobLocationCountry"
+              required={workMode !== "remote"}
+              defaultValue={initialValues?.jobLocationCountry ?? "US"}
+              disabled={disabled}
+              className="w-full rounded border px-3 py-2"
+            />
+            <p className="text-xs text-slate-500">Used for Google Job Posting markup. Required for non-remote jobs.</p>
+          </div>
+        </div>
+
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-1">
             <label htmlFor="streetAddress" className="text-sm font-medium">
@@ -332,7 +384,14 @@ export function JobForm({
             <label htmlFor="workMode" className="text-sm font-medium">
               Work mode
             </label>
-            <select id="workMode" name="workMode" defaultValue={initialValues?.workMode ?? ""} disabled={disabled} className="w-full rounded border px-3 py-2">
+            <select
+              id="workMode"
+              name="workMode"
+              value={workMode}
+              disabled={disabled}
+              onChange={(event) => setWorkMode(event.target.value as "" | "onsite" | "hybrid" | "remote")}
+              className="w-full rounded border px-3 py-2"
+            >
               <option value="">Select work mode</option>
               {workModeOptions
                 .filter((option) => option.value !== "any")

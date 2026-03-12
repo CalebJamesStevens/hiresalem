@@ -23,6 +23,15 @@ const categories = [
 const salaryIntervals = ["hour", "week", "month", "year"] as const
 const applyTypes = ["onsite", "external"] as const
 const paymentStatuses = ["pending", "paid", "canceled", "expired"] as const
+const supportedJobLocationCities = {
+  salem: "Salem",
+  keizer: "Keizer",
+  woodburn: "Woodburn",
+  dallas: "Dallas",
+  monmouth: "Monmouth",
+  independence: "Independence",
+  silverton: "Silverton"
+} as const
 
 type WorkMode = (typeof workModes)[number]
 type EmploymentType = (typeof employmentTypes)[number]
@@ -44,6 +53,9 @@ type RawJob = {
   ownerAuthId?: unknown
   companyId?: unknown
   location?: unknown
+  jobLocationCity?: unknown
+  jobLocationRegion?: unknown
+  jobLocationCountry?: unknown
   streetAddress?: unknown
   postalCode?: unknown
   salary?: unknown
@@ -77,12 +89,15 @@ type NormalizedCompany = {
   website: string | null
 }
 
-type NormalizedJob = {
+export type NormalizedJob = {
   slug: string
   title: string
   ownerAuthId: string
   companySlug: string | null
   location: string | null
+  jobLocationCity: string | null
+  jobLocationRegion: string | null
+  jobLocationCountry: string | null
   streetAddress: string | null
   postalCode: string | null
   salary: string | null
@@ -119,6 +134,11 @@ export type ImportNormalizedJobsSummary = {
   updatedCompanies: number
   insertedJobs: number
   updatedJobs: number
+  skippedJobs: Array<{
+    slug: string
+    title: string
+    reasons: string[]
+  }>
 }
 
 class DryRunRollback extends Error {
@@ -152,6 +172,51 @@ function optionalString(value: unknown) {
 function optionalUpperCurrency(value: unknown) {
   const trimmed = optionalString(value)
   return trimmed ? trimmed.toUpperCase() : null
+}
+
+function optionalUpperString(value: unknown) {
+  const trimmed = optionalString(value)
+  return trimmed ? trimmed.toUpperCase() : null
+}
+
+function normalizeWhitespace(value: string) {
+  return value.trim().replace(/\s+/g, " ")
+}
+
+function findSupportedCity(value: string) {
+  const matches = Object.entries(supportedJobLocationCities)
+    .map(([slug, city]) => ({
+      city,
+      index: value.search(new RegExp(`\\b${slug}\\b`, "i"))
+    }))
+    .filter((match) => match.index >= 0)
+    .sort((left, right) => left.index - right.index)
+
+  return matches[0]?.city ?? null
+}
+
+export function inferStructuredJobLocationFromLegacyText(location?: string | null) {
+  if (!location) {
+    return null
+  }
+
+  const normalized = normalizeWhitespace(location)
+
+  if (!normalized || /\b(remote|work from home|wfh|telecommute)\b/i.test(normalized)) {
+    return null
+  }
+
+  const city = findSupportedCity(normalized)
+
+  if (!city) {
+    return null
+  }
+
+  return {
+    city,
+    region: "OR",
+    country: "US"
+  }
 }
 
 function optionalPositiveNumber(value: unknown, field: string) {
@@ -238,6 +303,8 @@ function normalizeJob(raw: RawJob): NormalizedJob {
   const slug = expectString(raw.slug, "jobs[].slug")
   const salaryMin = optionalPositiveNumber(raw.salaryMin, `jobs[${slug}].salaryMin`)
   const salaryMax = optionalPositiveNumber(raw.salaryMax, `jobs[${slug}].salaryMax`)
+  const location = optionalString(raw.location)
+  const inferredJobLocation = inferStructuredJobLocationFromLegacyText(location)
 
   if (salaryMin && salaryMax && salaryMin > salaryMax) {
     throw new Error(`jobs[${slug}].salaryMin cannot be greater than salaryMax`)
@@ -255,7 +322,10 @@ function normalizeJob(raw: RawJob): NormalizedJob {
     title: expectString(raw.title, `jobs[${slug}].title`),
     ownerAuthId: optionalString(raw.ownerAuthId) ?? "system",
     companySlug: optionalString(raw.companyId),
-    location: optionalString(raw.location),
+    location,
+    jobLocationCity: optionalString(raw.jobLocationCity) ?? inferredJobLocation?.city ?? null,
+    jobLocationRegion: optionalUpperString(raw.jobLocationRegion) ?? inferredJobLocation?.region ?? null,
+    jobLocationCountry: optionalUpperString(raw.jobLocationCountry) ?? inferredJobLocation?.country ?? null,
     streetAddress: optionalString(raw.streetAddress),
     postalCode: optionalString(raw.postalCode),
     salary: optionalString(raw.salary),
@@ -276,6 +346,59 @@ function normalizeJob(raw: RawJob): NormalizedJob {
     expiresAt: optionalDate(raw.expiresAt, `jobs[${slug}].expiresAt`),
     createdAt: optionalDate(raw.createdAt, `jobs[${slug}].createdAt`) ?? new Date()
   }
+}
+
+function getImportedJobEmploymentKeywords(description: string) {
+  const normalized = description.toLowerCase()
+
+  return {
+    fullTime: /\bfull[-\s]?time\b/.test(normalized),
+    partTime: /\bpart[-\s]?time\b/.test(normalized),
+    internship: /\bintern(ship)?\b/.test(normalized),
+    temporary: /\btemporary\b|\btemp\b/.test(normalized),
+    permanent: /\bpermanent\b/.test(normalized),
+    employee: /\bposition type:\s*employee\b|\bjob type:\s*employee\b/.test(normalized)
+  }
+}
+
+export function getActiveImportEligibilityReasons(job: NormalizedJob, companyExists: boolean) {
+  const reasons: string[] = []
+
+  if (!companyExists) {
+    reasons.push("Active imported jobs must reference a valid company profile.")
+  }
+
+  if (!optionalString(job.description)) {
+    reasons.push("Active imported jobs must include a description.")
+  }
+
+  if (job.workMode !== "remote") {
+    if (!job.jobLocationCity || !job.jobLocationRegion || !job.jobLocationCountry) {
+      reasons.push("Active non-remote imported jobs must include jobLocationCity, jobLocationRegion, and jobLocationCountry.")
+    }
+  }
+
+  if (job.employmentType && job.description) {
+    const keywords = getImportedJobEmploymentKeywords(job.description)
+
+    if (job.employmentType === "internship" && (keywords.fullTime || keywords.partTime || keywords.permanent || keywords.employee)) {
+      reasons.push("Imported employmentType conflicts with the visible job description.")
+    }
+
+    if (job.employmentType === "full_time" && keywords.partTime) {
+      reasons.push("Imported employmentType conflicts with the visible job description.")
+    }
+
+    if (job.employmentType === "part_time" && keywords.fullTime) {
+      reasons.push("Imported employmentType conflicts with the visible job description.")
+    }
+
+    if (job.employmentType === "temporary" && keywords.permanent) {
+      reasons.push("Imported employmentType conflicts with the visible job description.")
+    }
+  }
+
+  return reasons
 }
 
 export function parseNormalizedJobsImport(raw: unknown): ImportPayload {
@@ -314,6 +437,7 @@ export async function importNormalizedJobs(raw: unknown, options: ImportNormaliz
   let updatedCompanies = 0
   let insertedJobs = 0
   let updatedJobs = 0
+  const skippedJobs: ImportNormalizedJobsSummary["skippedJobs"] = []
 
   try {
     await db.transaction(async (tx) => {
@@ -362,8 +486,25 @@ export async function importNormalizedJobs(raw: unknown, options: ImportNormaliz
 
       for (const job of payload.jobs) {
         const company = job.companySlug ? companyMap.get(job.companySlug) : null
+        const activeImportEligibilityReasons = job.isActive ? getActiveImportEligibilityReasons(job, Boolean(company)) : []
+
         if (job.companySlug && !company) {
-          throw new Error(`jobs[${job.slug}] references missing company slug: ${job.companySlug}`)
+          const reasons = [`jobs[${job.slug}] references missing company slug: ${job.companySlug}`]
+          skippedJobs.push({
+            slug: job.slug,
+            title: job.title,
+            reasons
+          })
+          continue
+        }
+
+        if (activeImportEligibilityReasons.length > 0) {
+          skippedJobs.push({
+            slug: job.slug,
+            title: job.title,
+            reasons: activeImportEligibilityReasons
+          })
+          continue
         }
 
         const ownerAuthId = company?.ownerAuthId ?? `${job.ownerAuthId}:${job.slug}`
@@ -373,6 +514,9 @@ export async function importNormalizedJobs(raw: unknown, options: ImportNormaliz
           ownerAuthId,
           companyId: company?.id ?? null,
           location: job.location,
+          jobLocationCity: job.jobLocationCity,
+          jobLocationRegion: job.jobLocationRegion,
+          jobLocationCountry: job.jobLocationCountry,
           streetAddress: job.streetAddress,
           postalCode: job.postalCode,
           salary: job.salary,
@@ -421,6 +565,7 @@ export async function importNormalizedJobs(raw: unknown, options: ImportNormaliz
     insertedCompanies,
     updatedCompanies,
     insertedJobs,
-    updatedJobs
+    updatedJobs,
+    skippedJobs
   }
 }

@@ -8,6 +8,7 @@ import { MarkdownContent } from "@/components/markdown-content"
 import { ApplicationForm } from "@/components/application-form"
 import { TrackedApplyLink } from "@/components/tracked-apply-link"
 import { hasAnyRole, hasRole, normalizeRoles } from "@/lib/authz"
+import { buildEligibleJobPostingJsonLd } from "@/lib/job-posting"
 import {
   canServeUnavailableJobPage,
   getJobStatusLabel,
@@ -21,7 +22,7 @@ import { buildPageMetadata, snippet } from "@/lib/seo"
 import { getJobHubLinksForContext } from "@/lib/seo-taxonomy"
 import { buildCompanyJobsPath } from "@/lib/site-paths"
 import { getSessionSafe } from "@/lib/session"
-import { buildBreadcrumbJsonLd, buildJobPostingJsonLd, normalizeJobLocation } from "@/lib/structured-data"
+import { buildBreadcrumbJsonLd, inferJobLocationFromLegacyText } from "@/lib/structured-data"
 
 type JobPageProps = {
   params: Promise<{
@@ -137,14 +138,17 @@ export default async function JobPage({ params }: JobPageProps) {
   const signedInEmail = typeof session?.user?.email === "string" ? session.user.email : null
   const signInHref = `/signin?callbackUrl=${encodeURIComponent(`/jobs/${job.slug}`)}`
   const companyPath = job.companySlug ? buildCompanyJobsPath(job.companySlug) : null
-  const normalizedJobLocation = job.workMode === "remote" ? null : normalizeJobLocation(job.location)
-  const jobLocation = normalizedJobLocation
-    ? {
-        ...normalizedJobLocation,
-        streetAddress: job.streetAddress,
-        postalCode: job.postalCode
-      }
-    : null
+  const legacyJobLocation = inferJobLocationFromLegacyText(job.location)
+  const jobLocation =
+    job.workMode === "remote"
+      ? null
+      : {
+          city: job.jobLocationCity ?? legacyJobLocation?.city ?? "",
+          region: job.jobLocationRegion ?? legacyJobLocation?.region ?? "",
+          country: job.jobLocationCountry ?? legacyJobLocation?.country ?? "",
+          streetAddress: job.streetAddress,
+          postalCode: job.postalCode
+        }
   const workModeLabel =
     job.workMode === "remote" ? "Remote" : job.workMode === "hybrid" ? "Hybrid" : job.workMode === "onsite" ? "On-site" : null
   const employmentTypeLabel = job.employmentType
@@ -201,6 +205,28 @@ export default async function JobPage({ params }: JobPageProps) {
     compensation ? { label: "Pay", value: compensation } : null,
     { label: "Posted", value: formatCalendarDate(postedAt) }
   ].filter((item): item is { label: string; value: string } => item !== null)
+  const jobPosting = buildEligibleJobPostingJsonLd({
+    title: job.title,
+    description: markdownToPlainText(job.description) || null,
+    path: `/jobs/${job.slug}`,
+    datePosted: job.activatedAt ?? job.createdAt,
+    validThrough: job.expiresAt,
+    employmentType: job.employmentType,
+    hiringOrganizationName: job.companyName,
+    hiringOrganizationWebsite: job.companyWebsite,
+    jobLocation,
+    applicantLocationCountry: "US",
+    isRemote: job.workMode === "remote",
+    baseSalary:
+      job.salaryMin || job.salaryMax
+        ? {
+            currency: job.salaryCurrency ?? "USD",
+            minValue: job.salaryMin,
+            maxValue: job.salaryMax,
+            unitText: job.salaryInterval ?? null
+          }
+        : null
+  })
 
   return (
     <article className={mobileApplyCta ? "min-w-0 space-y-8 pb-32 lg:pb-0" : "min-w-0 space-y-8"}>
@@ -213,31 +239,7 @@ export default async function JobPage({ params }: JobPageProps) {
         )}
       />
       {isPublished ? (
-        <JsonLd
-          data={buildJobPostingJsonLd({
-            title: job.title,
-            description: markdownToPlainText(job.description) || `${job.title} at ${job.companyName ?? "a Salem-area employer"}`,
-            path: `/jobs/${job.slug}`,
-            datePosted: job.activatedAt ?? job.createdAt,
-            validThrough: job.expiresAt,
-            employmentType: job.employmentType,
-            hiringOrganizationName: job.companyName,
-            hiringOrganizationWebsite: job.companyWebsite,
-            jobLocation,
-            applicantLocationCountry: "US",
-            isRemote: job.workMode === "remote",
-            directApply: job.applyType === "external",
-            baseSalary:
-              job.salaryMin || job.salaryMax
-                ? {
-                    currency: job.salaryCurrency ?? "USD",
-                    minValue: job.salaryMin,
-                    maxValue: job.salaryMax,
-                    unitText: job.salaryInterval ?? null
-                  }
-                : null
-          })}
-        />
+        jobPosting.jsonLd ? <JsonLd data={jobPosting.jsonLd} /> : null
       ) : null}
 
       <section className="min-w-0 overflow-hidden rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">

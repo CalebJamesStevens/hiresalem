@@ -71,6 +71,13 @@
       "when": 1773025394777,
       "tag": "0010_lying_boomerang",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1773258343715,
+      "tag": "0011_nostalgic_mongu",
+      "breakpoints": true
     }
   ]
 }

@@ -16,6 +16,9 @@ type PublicJobFields = Pick<
   | "ownerAuthId"
   | "companyId"
   | "location"
+  | "jobLocationCity"
+  | "jobLocationRegion"
+  | "jobLocationCountry"
   | "streetAddress"
   | "postalCode"
   | "salary"
@@ -143,6 +146,9 @@ function getPublicJobSelectShape(relevance: SQL<number>) {
     ownerAuthId: jobs.ownerAuthId,
     companyId: jobs.companyId,
     location: jobs.location,
+    jobLocationCity: jobs.jobLocationCity,
+    jobLocationRegion: jobs.jobLocationRegion,
+    jobLocationCountry: jobs.jobLocationCountry,
     streetAddress: jobs.streetAddress,
     postalCode: jobs.postalCode,
     salary: jobs.salary,
@@ -302,6 +308,9 @@ export async function getJobBySlug(slug: string) {
       ownerAuthId: jobs.ownerAuthId,
       companyId: jobs.companyId,
       location: jobs.location,
+      jobLocationCity: jobs.jobLocationCity,
+      jobLocationRegion: jobs.jobLocationRegion,
+      jobLocationCountry: jobs.jobLocationCountry,
       streetAddress: jobs.streetAddress,
       postalCode: jobs.postalCode,
       salary: jobs.salary,

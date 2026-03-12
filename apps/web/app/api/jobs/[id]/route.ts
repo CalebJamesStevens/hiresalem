@@ -3,7 +3,14 @@ import { z } from "zod"
 
 import { hasRole, normalizeRoles } from "@/lib/authz"
 import { getJobStatusLabel, isJobExpired, isJobPublished } from "@/lib/job-listing-billing"
-import { buildJobWriteValues, calculateJobExpiration, jobWriteSchema, resolveCompanyForJob } from "@/lib/job-write"
+import {
+  buildJobWriteValues,
+  calculateJobExpiration,
+  getJobPublicationValidationMessage,
+  getJobPublicationValidationReasons,
+  jobWriteSchema,
+  resolveCompanyForJob
+} from "@/lib/job-write"
 import { getSessionSafe } from "@/lib/session"
 import { requireApiRoles } from "@/lib/api-auth"
 import { db } from "@/lib/db"
@@ -76,6 +83,11 @@ export async function PATCH(req: Request, { params }: JobRouteContext) {
     if (isJobExpired(existing)) {
       return Response.json({ error: "This listing has expired. Create a new paid listing to publish it again." }, { status: 400 })
     }
+
+    const publicationValidationMessage = getJobPublicationValidationMessage(getJobPublicationValidationReasons(existing))
+    if (publicationValidationMessage) {
+      return Response.json({ error: publicationValidationMessage }, { status: 400 })
+    }
   }
 
   const [updated] = await db
@@ -133,6 +145,13 @@ export async function PUT(req: Request, { params }: JobRouteContext) {
   }
 
   const nextValues = buildJobWriteValues(parsed.data, companyForJob?.id ?? null)
+  const publicationValidationReasons = getJobPublicationValidationReasons(nextValues)
+  const publicationValidationMessage = getJobPublicationValidationMessage(publicationValidationReasons)
+
+  if (publicationValidationMessage) {
+    return Response.json({ error: publicationValidationMessage }, { status: 400 })
+  }
+
   const shouldRecalculateExpiration = Boolean(existing.activatedAt)
   const [updated] = await db
     .update(jobs)

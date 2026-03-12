@@ -53,6 +53,9 @@ export const jobWriteSchema = z
     title: z.string().min(2),
     slug: z.string().optional(),
     location: z.string().optional(),
+    jobLocationCity: z.string().trim().min(2).max(120).optional(),
+    jobLocationRegion: z.string().trim().min(2).max(120).optional(),
+    jobLocationCountry: z.string().trim().min(2).max(2).optional(),
     streetAddress: z.string().trim().min(2).max(200).optional(),
     postalCode: z.string().trim().min(3).max(16).optional(),
     salary: z.string().optional(),
@@ -100,6 +103,64 @@ export const jobWriteSchema = z
 
 export type JobWriteInput = z.infer<typeof jobWriteSchema>
 export type PersistedJob = typeof jobs.$inferSelect
+
+export type JobPublicationValidationReason =
+  | "missing_company"
+  | "missing_description"
+  | "missing_job_location_city"
+  | "missing_job_location_region"
+  | "missing_job_location_country"
+
+export function getJobPublicationValidationReasons(input: {
+  companyId: string | null
+  description?: string | null
+  workMode?: (typeof workModeEnum.enumValues)[number] | null
+  jobLocationCity?: string | null
+  jobLocationRegion?: string | null
+  jobLocationCountry?: string | null
+}) {
+  const reasons: JobPublicationValidationReason[] = []
+
+  if (!input.companyId) {
+    reasons.push("missing_company")
+  }
+
+  if (!cleanOptionalText(input.description ?? undefined)) {
+    reasons.push("missing_description")
+  }
+
+  if (input.workMode !== "remote") {
+    if (!cleanOptionalText(input.jobLocationCity ?? undefined)) {
+      reasons.push("missing_job_location_city")
+    }
+
+    if (!cleanOptionalText(input.jobLocationRegion ?? undefined)) {
+      reasons.push("missing_job_location_region")
+    }
+
+    if (!cleanOptionalText(input.jobLocationCountry ?? undefined)) {
+      reasons.push("missing_job_location_country")
+    }
+  }
+
+  return reasons
+}
+
+export function getJobPublicationValidationMessage(reasons: JobPublicationValidationReason[]) {
+  if (reasons.length === 0) {
+    return null
+  }
+
+  const messageMap: Record<JobPublicationValidationReason, string> = {
+    missing_company: "Select or create a company before publishing this job.",
+    missing_description: "Add a job description before publishing this job.",
+    missing_job_location_city: "Add a schema job-location city before publishing this non-remote job.",
+    missing_job_location_region: "Add a schema job-location region before publishing this non-remote job.",
+    missing_job_location_country: "Add a schema job-location country before publishing this non-remote job."
+  }
+
+  return reasons.map((reason) => messageMap[reason]).join(" ")
+}
 
 export function toJobSlug(value: string) {
   return value
@@ -164,6 +225,9 @@ export function buildJobWriteValues(input: JobWriteInput, companyId: string | nu
     title: input.title.trim(),
     companyId,
     location: cleanOptionalText(input.location),
+    jobLocationCity: cleanOptionalText(input.jobLocationCity),
+    jobLocationRegion: cleanOptionalText(input.jobLocationRegion)?.toUpperCase() ?? null,
+    jobLocationCountry: cleanOptionalText(input.jobLocationCountry)?.toUpperCase() ?? null,
     streetAddress: cleanOptionalText(input.streetAddress),
     postalCode: cleanOptionalText(input.postalCode),
     salary: cleanOptionalText(input.salary),

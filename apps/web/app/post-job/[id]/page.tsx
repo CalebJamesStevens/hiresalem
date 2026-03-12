@@ -6,6 +6,7 @@ import { hasRole } from "@/lib/authz"
 import { getCompanyById, listCompanies } from "@/lib/companies"
 import { getJobById } from "@/lib/jobs"
 import { requirePageRoles } from "@/lib/page-auth"
+import { inferJobLocationFromLegacyText } from "@/lib/structured-data"
 
 type EditJobPageProps = {
   params: Promise<{
@@ -28,6 +29,7 @@ export default async function EditJobPage({ params }: EditJobPageProps) {
   }
 
   const company = job.companyId ? await getCompanyById(job.companyId) : null
+  const inferredJobLocation = inferJobLocationFromLegacyText(job.location)
 
   return (
     <section className="space-y-6">
@@ -52,6 +54,9 @@ export default async function EditJobPage({ params }: EditJobPageProps) {
           slug: job.slug,
           title: job.title,
           location: job.location,
+          jobLocationCity: job.jobLocationCity ?? inferredJobLocation?.city ?? null,
+          jobLocationRegion: job.jobLocationRegion ?? inferredJobLocation?.region ?? null,
+          jobLocationCountry: job.jobLocationCountry ?? inferredJobLocation?.country ?? null,
           streetAddress: job.streetAddress,
           postalCode: job.postalCode,
           salary: job.salary,

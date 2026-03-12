@@ -22,6 +22,10 @@ export default async function AdminSeoPage() {
           <p className="mt-2 text-3xl font-semibold text-slate-950">{dashboard.counts.activeJobPages}</p>
         </article>
         <article className="rounded-2xl border bg-white p-5 shadow-sm">
+          <p className="text-sm text-slate-500">Eligible JobPosting pages</p>
+          <p className="mt-2 text-3xl font-semibold text-slate-950">{dashboard.counts.eligibleJobPostingCount}</p>
+        </article>
+        <article className="rounded-2xl border bg-white p-5 shadow-sm">
           <p className="text-sm text-slate-500">Company pages</p>
           <p className="mt-2 text-3xl font-semibold text-slate-950">{dashboard.counts.companyPages}</p>
         </article>
@@ -72,6 +76,14 @@ export default async function AdminSeoPage() {
             </Link>
           </div>
         </article>
+
+        <article className="rounded-2xl border bg-white p-5 shadow-sm">
+          <h2 className="text-lg font-semibold text-slate-950">Google indexing</h2>
+          <p className="mt-2 text-sm text-slate-600">
+            {dashboard.indexing.configured ? "Google Indexing API is configured." : "Google Indexing API is not configured."}
+          </p>
+          {dashboard.indexing.error ? <p className="mt-2 text-sm text-amber-700">{dashboard.indexing.error}</p> : null}
+        </article>
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">
@@ -107,6 +119,45 @@ export default async function AdminSeoPage() {
                     {job.title}
                   </Link>
                   <p className="mt-1 text-sm text-slate-600">Company id: {job.companyId ?? "none"}</p>
+                </article>
+              ))}
+            </div>
+          )}
+        </article>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-2">
+        <article className="rounded-2xl border bg-white p-5 shadow-sm">
+          <h2 className="text-lg font-semibold text-slate-950">JobPosting blockers</h2>
+          <dl className="mt-4 space-y-3 text-sm text-slate-700">
+            <div className="flex items-center justify-between gap-4">
+              <dt>Missing company</dt>
+              <dd>{dashboard.counts.activeJobsBlockedByMissingCompany}</dd>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <dt>Missing structured location</dt>
+              <dd>{dashboard.counts.activeJobsBlockedByMissingLocation}</dd>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <dt>Other schema blockers</dt>
+              <dd>{dashboard.counts.activeJobsBlockedByOtherReasons}</dd>
+            </div>
+          </dl>
+        </article>
+
+        <article className="rounded-2xl border bg-white p-5 shadow-sm">
+          <h2 className="text-lg font-semibold text-slate-950">Schema-suppressed job pages</h2>
+          <p className="mt-1 text-sm text-slate-600">These pages stay live, but `JobPosting` markup is currently suppressed.</p>
+          {dashboard.hygiene.schemaSuppressedJobs.length === 0 ? (
+            <p className="mt-4 text-sm text-slate-600">No active jobs are currently blocked from JobPosting markup.</p>
+          ) : (
+            <div className="mt-4 space-y-3">
+              {dashboard.hygiene.schemaSuppressedJobs.map((job) => (
+                <article key={job.slug} className="rounded-xl border border-slate-200 p-4">
+                  <Link href={`/jobs/${job.slug}`} className="font-medium text-slate-900 underline underline-offset-4">
+                    {job.title}
+                  </Link>
+                  <p className="mt-1 text-sm text-slate-600">{job.reasons.join(", ")}</p>
                 </article>
               ))}
             </div>
