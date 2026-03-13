@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, gt, ilike, isNull, ne, or, sql, type SQL } from "drizzle-orm"
 
+import { getCompanyPublicProfileContent, hasIndexableCompanyProfileContent } from "@/lib/companies"
 import { db } from "@/lib/db"
 import { getBoostedNewestJobOrderBy, getBoostedRelevanceJobOrderBy, getFeaturedJobVisibilityExpression, shouldBoostFeaturedJobs } from "@/lib/featured-jobs"
 import type { JobsSearchParams } from "@/lib/job-search"
@@ -453,17 +454,50 @@ export async function listRelatedJobsForJob(job: PublicJobDetail, limit = 4) {
     .map(({ relevance: _relevance, ...relatedJob }) => relatedJob)
 }
 
-export async function listCompaniesWithActiveJobsForSitemap() {
-  return db
+export async function listCompaniesForSitemap() {
+  const rows = await db
     .select({
       slug: companies.slug,
       createdAt: companies.createdAt,
+      shortDescription: companies.shortDescription,
+      linkedinUrl: companies.linkedinUrl,
+      facebookUrl: companies.facebookUrl,
+      instagramUrl: companies.instagramUrl,
+      aboutSection: companies.aboutSection,
+      whyWorkHere: companies.whyWorkHere,
+      benefits: companies.benefits,
+      coverImageUrl: companies.coverImageUrl,
+      galleryImageUrl1: companies.galleryImageUrl1,
+      galleryImageUrl2: companies.galleryImageUrl2,
+      plan: companies.plan,
+      planOverride: companies.planOverride,
+      activeJobCount: sql<number>`count(${jobs.id})::int`,
       latestActiveJobActivatedAt: sql<Date | null>`max(${jobs.activatedAt})`,
       latestActiveJobCreatedAt: sql<Date | null>`max(${jobs.createdAt})`
     })
     .from(companies)
-    .innerJoin(jobs, eq(companies.id, jobs.companyId))
-    .where(getPublishedJobsFilter())
-    .groupBy(companies.id)
+    .leftJoin(jobs, and(eq(companies.id, jobs.companyId), getPublishedJobsFilter()))
+    .groupBy(
+      companies.id,
+      companies.slug,
+      companies.createdAt,
+      companies.shortDescription,
+      companies.linkedinUrl,
+      companies.facebookUrl,
+      companies.instagramUrl,
+      companies.aboutSection,
+      companies.whyWorkHere,
+      companies.benefits,
+      companies.coverImageUrl,
+      companies.galleryImageUrl1,
+      companies.galleryImageUrl2,
+      companies.plan,
+      companies.planOverride
+    )
     .orderBy(desc(sql<Date | null>`max(${jobs.activatedAt})`), desc(sql<Date | null>`max(${jobs.createdAt})`), desc(companies.createdAt))
+
+  return rows.filter((company) => {
+    const publicProfile = getCompanyPublicProfileContent(company)
+    return company.activeJobCount > 0 || hasIndexableCompanyProfileContent(publicProfile)
+  })
 }

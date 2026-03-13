@@ -5,7 +5,13 @@ import { Breadcrumbs } from "@/components/breadcrumbs"
 import { FeaturedJobBadge } from "@/components/featured-job-badge"
 import { JsonLd } from "@/components/json-ld"
 import { MarkdownContent } from "@/components/markdown-content"
-import { buildCompanyProfilePageDescription, getCompanyBySlug, getCompanyProfileInitials, getCompanyPublicProfileContent } from "@/lib/companies"
+import {
+  buildCompanyProfilePageDescription,
+  getCompanyBySlug,
+  getCompanyProfileInitials,
+  getCompanyPublicProfileContent,
+  hasIndexableCompanyProfileContent
+} from "@/lib/companies"
 import { categoryOptions } from "@/lib/job-search"
 import { listActiveJobsForCompany } from "@/lib/jobs"
 import { buildPageMetadata } from "@/lib/seo"
@@ -90,6 +96,7 @@ export async function generateMetadata({ params }: CompanyPageProps) {
 
   const publicProfile = getCompanyPublicProfileContent(company)
   const companyJobs = await listActiveJobsForCompany(company.id)
+  const hasIndexableProfile = hasIndexableCompanyProfileContent(publicProfile)
   const description = buildCompanyProfilePageDescription({
     name: company.name,
     shortDescription: publicProfile.shortDescription,
@@ -99,17 +106,20 @@ export async function generateMetadata({ params }: CompanyPageProps) {
   })
 
   return buildPageMetadata({
-    title: `${company.name} jobs in Salem Oregon`,
+    title: companyJobs.length > 0 ? `${company.name} jobs in Salem Oregon` : `${company.name} company profile in Salem Oregon`,
     description,
     path: buildCompanyJobsPath(company.slug),
     robots:
-      companyJobs.length > 0
+      companyJobs.length > 0 || hasIndexableProfile
         ? undefined
         : {
             index: false,
             follow: true
           },
-    keywords: [company.name, `${company.name} jobs`, "Salem Oregon jobs"]
+    keywords:
+      companyJobs.length > 0
+        ? [company.name, `${company.name} jobs`, "Salem Oregon jobs"]
+        : [company.name, `${company.name} Salem Oregon`, "Salem Oregon employers"]
   })
 }
 

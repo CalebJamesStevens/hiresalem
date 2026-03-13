@@ -13,6 +13,7 @@ const publicNavItems = [
   { href: "/", label: "Home" },
   { href: "/jobs/salem", label: "Salem Jobs" },
   { href: "/jobs", label: "All Jobs" },
+  { href: "/employers", label: "Employers" },
   { href: "/resources", label: "Resources" }
 ]
 

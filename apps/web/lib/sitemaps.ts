@@ -1,6 +1,6 @@
 import { EDITORIAL_CONTENT_LAST_MODIFIED, jobsLandingPages, resourceArticles } from "@/lib/seo-taxonomy"
 import { absoluteUrl } from "@/lib/seo"
-import { listCompaniesWithActiveJobsForSitemap, listPublicJobsForSitemap } from "@/lib/jobs"
+import { listCompaniesForSitemap, listPublicJobsForSitemap } from "@/lib/jobs"
 import { buildCompanyJobsPath } from "@/lib/site-paths"
 
 export type SitemapEntry = {
@@ -17,6 +17,7 @@ const sitemapDocumentOptions = {
 export function getStaticSitemapEntries(): SitemapEntry[] {
   return [
     { path: "/", lastModified: EDITORIAL_CONTENT_LAST_MODIFIED },
+    { path: "/employers", lastModified: EDITORIAL_CONTENT_LAST_MODIFIED },
     { path: "/jobs", lastModified: EDITORIAL_CONTENT_LAST_MODIFIED },
     { path: "/resources", lastModified: EDITORIAL_CONTENT_LAST_MODIFIED },
     ...resourceArticles.map((article) => ({
@@ -59,7 +60,7 @@ export async function getJobsSitemapEntries(): Promise<SitemapEntry[]> {
 }
 
 export async function getPagesSitemapEntries(): Promise<SitemapEntry[]> {
-  const companies = await listCompaniesWithActiveJobsForSitemap()
+  const companies = await listCompaniesForSitemap()
 
   return [
     ...getStaticSitemapEntries(),

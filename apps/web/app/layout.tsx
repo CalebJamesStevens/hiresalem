@@ -81,6 +81,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <div className="flex flex-wrap items-center gap-4">
               <Link href="/jobs/salem">Salem jobs</Link>
               <Link href="/jobs/keizer">Keizer jobs</Link>
+              <Link href="/employers">Employers</Link>
               <Link href="/resources">Resources</Link>
             </div>
           </div>

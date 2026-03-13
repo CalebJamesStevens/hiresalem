@@ -15,7 +15,9 @@ function signInRedirect(req: Request) {
 export default auth((req: any) => {
   const canonicalRedirectUrl = getCanonicalRedirectUrl({
     url: req.url,
-    forwardedProto: req.headers.get("x-forwarded-proto")
+    forwardedProto: req.headers.get("x-forwarded-proto"),
+    forwardedHost: req.headers.get("x-forwarded-host"),
+    host: req.headers.get("host")
   })
 
   if (canonicalRedirectUrl) {

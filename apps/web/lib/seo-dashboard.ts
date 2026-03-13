@@ -4,7 +4,7 @@ import { db } from "@/lib/db"
 import { getGoogleIndexingConfigurationStatus } from "@/lib/google-indexing"
 import { getPublishedJobsFilter } from "@/lib/job-listing-billing"
 import { buildEligibleJobPostingJsonLd, type JobPostingEligibilityReason } from "@/lib/job-posting"
-import { listCompaniesWithActiveJobsForSitemap } from "@/lib/jobs"
+import { listCompaniesForSitemap } from "@/lib/jobs"
 import { resourceArticles, jobsLandingPages } from "@/lib/seo-taxonomy"
 import { getSitemapCounts } from "@/lib/sitemaps"
 import { companies } from "@repo/db/schema/companies"
@@ -39,7 +39,7 @@ export async function getSeoDashboardData() {
       })
       .from(jobs)
       .where(getPublishedJobsFilter()),
-    listCompaniesWithActiveJobsForSitemap(),
+    listCompaniesForSitemap(),
     getSitemapCounts(),
     db
       .select({

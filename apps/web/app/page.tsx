@@ -42,7 +42,11 @@ export default async function HomePage() {
         <div className="space-y-3">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-500">Search Salem-area jobs</p>
-            <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950 md:text-4xl">Search jobs right from the homepage</h1>
+            <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950 md:text-4xl">Find Salem, Oregon jobs from local employers</h1>
+            <p className="mt-2 max-w-3xl text-base leading-7 text-slate-700">
+              Search the local market first, then widen into Salem category pages, nearby Keizer openings, and employer profiles when you want a
+              more targeted path.
+            </p>
           </div>
           <form action="/jobs" method="get" className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-3">
             <div className="grid gap-3 md:grid-cols-[minmax(0,1.6fr)_minmax(220px,1fr)_auto]">
@@ -82,6 +86,35 @@ export default async function HomePage() {
         </div>
       </section>
 
+      <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)] lg:items-center">
+          <div className="space-y-3">
+            <p className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-500">For Salem employers</p>
+            <h2 className="text-3xl font-bold tracking-tight text-slate-950">Need to hire in Salem, Oregon?</h2>
+            <p className="max-w-3xl text-base leading-7 text-slate-700">
+              Publish jobs into a Salem-first board, create a public company page, and give local candidates a cleaner path into your openings.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <Link href="/employers" className="rounded-full bg-slate-900 px-5 py-2.5 text-sm font-medium text-white">
+                Explore employer options
+              </Link>
+              <Link href="/become-business" className="rounded-full border border-slate-300 px-5 py-2.5 text-sm font-medium text-slate-900">
+                Start a business profile
+              </Link>
+            </div>
+          </div>
+
+          <div className="rounded-[1.75rem] bg-slate-950 p-6 text-slate-50">
+            <h2 className="text-xl font-semibold">Employer basics</h2>
+            <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-200">
+              <li>Free setup includes a public company profile and up to 3 live jobs.</li>
+              <li>Listings feed into Salem and category-specific hiring paths.</li>
+              <li>Stronger profile and visibility options are available when needed.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
       <section className="space-y-4">
         <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
           <div>
@@ -99,7 +132,7 @@ export default async function HomePage() {
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(280px,0.9fr)] lg:items-end">
           <div className="space-y-5">
             <p className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-500">Local jobs in Salem, Oregon</p>
-            <h2 className="max-w-3xl text-4xl font-bold tracking-tight text-slate-950 md:text-5xl">Find Salem, Oregon jobs from local employers</h2>
+            <h2 className="max-w-3xl text-4xl font-bold tracking-tight text-slate-950 md:text-5xl">Why local Salem job seekers start here</h2>
             <div className="max-w-3xl space-y-4 text-base leading-7 text-slate-700">
               <p>
                 HireSalem is built for people who want jobs in Salem, Oregon without sorting through a generic national jobs directory. Start with the

@@ -24,6 +24,7 @@ describe("sitemap helpers", () => {
     const paths = entries.map((entry) => entry.path)
 
     expect(paths).toContain("/")
+    expect(paths).toContain("/employers")
     expect(paths).toContain("/jobs")
     expect(paths).toContain("/resources")
     expect(entries.find((entry) => entry.path === "/resources")?.lastModified).toBe(EDITORIAL_CONTENT_LAST_MODIFIED)

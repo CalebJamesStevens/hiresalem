@@ -6,6 +6,7 @@ import {
   getCompanyPublicProfileContent,
   getCompanyProfileInitials,
   getCompanyPlanValidationErrorCode,
+  hasIndexableCompanyProfileContent,
   normalizeCompanyWebsite,
   parseCompanyPlanInput,
   parseCompanyProfileInput,
@@ -271,5 +272,31 @@ describe("public company profile helpers", () => {
     expect(profile.coverImageUrl).toBe("https://example.com/cover.jpg")
     expect(profile.galleryImageUrls).toEqual(["https://example.com/1.jpg", "https://example.com/2.jpg"])
     expect(profile.usesEnhancedPresentation).toBe(true)
+  })
+
+  test("treats filled-out profiles as indexable even without active jobs", () => {
+    expect(
+      hasIndexableCompanyProfileContent({
+        shortDescription: "Community employer serving Salem.",
+        aboutSection: null,
+        whyWorkHere: null,
+        benefits: null,
+        socialLinks: [],
+        coverImageUrl: null,
+        galleryImageUrls: []
+      })
+    ).toBe(true)
+
+    expect(
+      hasIndexableCompanyProfileContent({
+        shortDescription: null,
+        aboutSection: null,
+        whyWorkHere: null,
+        benefits: null,
+        socialLinks: [],
+        coverImageUrl: null,
+        galleryImageUrls: []
+      })
+    ).toBe(false)
   })
 })

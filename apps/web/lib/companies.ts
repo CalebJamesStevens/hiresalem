@@ -145,6 +145,19 @@ export type CompanyPublicProfileContent = {
   usesEnhancedPresentation: boolean
 }
 
+export function hasIndexableCompanyProfileContent(
+  profile: Pick<
+    CompanyPublicProfileContent,
+    "shortDescription" | "aboutSection" | "whyWorkHere" | "benefits" | "socialLinks" | "coverImageUrl" | "galleryImageUrls"
+  >
+) {
+  return (
+    hasAnyValue([profile.shortDescription, profile.aboutSection, profile.whyWorkHere, profile.benefits, profile.coverImageUrl]) ||
+    profile.socialLinks.length > 0 ||
+    profile.galleryImageUrls.length > 0
+  )
+}
+
 function getCompanyEnhancedProfileAccess(plan?: Pick<ResolvedCompanyPlan, "entitlements"> | null) {
   return {
     allowsSocialLinks: Boolean(plan?.entitlements.allowsSocialLinks),

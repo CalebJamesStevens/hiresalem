@@ -78,6 +78,14 @@ describe("page metadata", () => {
 
     expect(
       getCanonicalRedirectUrl({
+        url: "https://hiresalem.com/jobs/salem?ref=1",
+        forwardedProto: "https",
+        forwardedHost: "www.hiresalem.com"
+      })
+    ).toBe("https://hiresalem.com/jobs/salem?ref=1")
+
+    expect(
+      getCanonicalRedirectUrl({
         url: "http://localhost:3000/jobs/salem",
         forwardedProto: "http"
       })

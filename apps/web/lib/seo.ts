@@ -69,16 +69,36 @@ export function absoluteUrl(path = "/", origin = siteConfig.url) {
   return new URL(path, normalizePublicOrigin(origin)).toString()
 }
 
-export function getCanonicalRedirectUrl(input: { url: string; forwardedProto?: string | null }) {
-  const requestUrl = new URL(input.url)
-  const forwardedProto = input.forwardedProto?.split(",")[0]?.trim()
-  const requestProtocol = forwardedProto || requestUrl.protocol.replace(":", "")
+function getForwardedHeaderValue(value?: string | null) {
+  return value?.split(",")[0]?.trim() || null
+}
 
-  if (!liveSiteHosts.has(requestUrl.hostname)) {
+function getHostnameFromHost(value: string) {
+  if (value.startsWith("[")) {
+    const closingIndex = value.indexOf("]")
+    return closingIndex >= 0 ? value.slice(1, closingIndex) : value
+  }
+
+  return value.split(":")[0] ?? value
+}
+
+export function getCanonicalRedirectUrl(input: {
+  url: string
+  forwardedProto?: string | null
+  forwardedHost?: string | null
+  host?: string | null
+}) {
+  const requestUrl = new URL(input.url)
+  const forwardedProto = getForwardedHeaderValue(input.forwardedProto)
+  const requestProtocol = forwardedProto || requestUrl.protocol.replace(":", "")
+  const requestHost = getForwardedHeaderValue(input.forwardedHost) || getForwardedHeaderValue(input.host) || requestUrl.host
+  const requestHostname = getHostnameFromHost(requestHost)
+
+  if (!liveSiteHosts.has(requestHostname)) {
     return null
   }
 
-  if (requestUrl.hostname === siteConfig.canonicalHost && requestProtocol === "https") {
+  if (requestHostname === siteConfig.canonicalHost && requestProtocol === "https") {
     return null
   }
 

@@ -4,7 +4,7 @@ import { Breadcrumbs } from "@/components/breadcrumbs"
 import { FaqSection } from "@/components/faq-section"
 import { JsonLd } from "@/components/json-ld"
 import { LinkCardGrid } from "@/components/link-card-grid"
-import type { ResourceArticle } from "@/lib/seo-taxonomy"
+import { EDITORIAL_CONTENT_LAST_MODIFIED, type ResourceArticle } from "@/lib/seo-taxonomy"
 import { buildArticleJsonLd, buildBreadcrumbJsonLd, buildCollectionPageJsonLd, buildFaqJsonLd } from "@/lib/structured-data"
 
 export function ResourceArticlePageView({ article }: { article: ResourceArticle }) {
@@ -13,6 +13,11 @@ export function ResourceArticlePageView({ article }: { article: ResourceArticle 
     { name: "Resources", href: "/resources" },
     { name: article.heroTitle, href: article.path }
   ]
+  const updatedLabel = new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric"
+  }).format(EDITORIAL_CONTENT_LAST_MODIFIED)
 
   return (
     <article className="space-y-8">
@@ -39,7 +44,9 @@ export function ResourceArticlePageView({ article }: { article: ResourceArticle 
         data={buildArticleJsonLd({
           headline: article.heroTitle,
           description: article.seoDescription,
-          path: article.path
+          path: article.path,
+          datePublished: EDITORIAL_CONTENT_LAST_MODIFIED,
+          dateModified: EDITORIAL_CONTENT_LAST_MODIFIED
         })}
       />
       <JsonLd data={buildFaqJsonLd(article.faqs)} />
@@ -49,6 +56,7 @@ export function ResourceArticlePageView({ article }: { article: ResourceArticle 
         <div className="space-y-3">
           <p className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-500">Salem job seeker guide</p>
           <h1 className="max-w-3xl text-4xl font-bold tracking-tight text-slate-950 md:text-5xl">{article.heroTitle}</h1>
+          <p className="text-sm text-slate-500">Updated {updatedLabel}</p>
         </div>
         <div className="space-y-4">
           {article.intro.map((paragraph) => (
