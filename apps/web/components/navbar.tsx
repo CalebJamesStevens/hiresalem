@@ -65,6 +65,16 @@ export function Navbar() {
   const canPost = roles.includes("business") || isAdmin
   const canBecomeBusiness = Boolean(userId) && !canPost
   const signOutCallbackUrl = getSignOutCallbackUrl(globalThis.location?.origin)
+
+  async function handleSignOut() {
+    await signOut({
+      redirect: false,
+      callbackUrl: signOutCallbackUrl
+    })
+
+    globalThis.location.assign(signOutCallbackUrl)
+  }
+
   const secondaryNavItems: NavItem[] = [
     canPost ? { href: "/post-job", label: "Post job" } : null,
     userId ? { href: "/dashboard", label: "Dashboard" } : null,
@@ -99,7 +109,7 @@ export function Navbar() {
               <button
                 type="button"
                 onClick={() => {
-                  void signOut({ callbackUrl: signOutCallbackUrl })
+                  void handleSignOut()
                 }}
                 className="text-slate-600 hover:text-slate-900"
               >
@@ -120,7 +130,7 @@ export function Navbar() {
             <button
               type="button"
               onClick={() => {
-                void signOut({ callbackUrl: signOutCallbackUrl })
+                void handleSignOut()
               }}
               className="min-h-11 text-left text-base font-medium text-slate-900"
             >
