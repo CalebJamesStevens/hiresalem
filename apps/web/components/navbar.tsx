@@ -6,6 +6,7 @@ import { useEffect, useState } from "react"
 
 import { SiteBrand } from "@/components/site-brand"
 import { hasRole, normalizeRoles } from "@/lib/authz"
+import { getSignOutCallbackUrl } from "@/lib/auth-client"
 import { MobileNav } from "@/components/mobile-nav"
 
 const publicNavItems = [
@@ -63,6 +64,7 @@ export function Navbar() {
   const isAdmin = hasRole(roles, "admin")
   const canPost = roles.includes("business") || isAdmin
   const canBecomeBusiness = Boolean(userId) && !canPost
+  const signOutCallbackUrl = getSignOutCallbackUrl(globalThis.location?.origin)
   const secondaryNavItems: NavItem[] = [
     canPost ? { href: "/post-job", label: "Post job" } : null,
     userId ? { href: "/dashboard", label: "Dashboard" } : null,
@@ -97,7 +99,7 @@ export function Navbar() {
               <button
                 type="button"
                 onClick={() => {
-                  void signOut({ callbackUrl: "/" })
+                  void signOut({ callbackUrl: signOutCallbackUrl })
                 }}
                 className="text-slate-600 hover:text-slate-900"
               >
@@ -118,7 +120,7 @@ export function Navbar() {
             <button
               type="button"
               onClick={() => {
-                void signOut({ callbackUrl: "/" })
+                void signOut({ callbackUrl: signOutCallbackUrl })
               }}
               className="min-h-11 text-left text-base font-medium text-slate-900"
             >
