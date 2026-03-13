@@ -24,6 +24,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
           </Link>
         ) : null}
         {canManageJobs ? (
+          <Link href="/dashboard/analytics" className="rounded border bg-white px-3 py-2">
+            Analytics
+          </Link>
+        ) : null}
+        {canManageJobs ? (
           <Link href="/dashboard/plan" className="rounded border bg-white px-3 py-2">
             Plan & Billing
           </Link>
@@ -36,6 +41,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
         {canViewApplications ? (
           <Link href="/dashboard/applications" className="rounded border bg-white px-3 py-2">
             My Applications
+          </Link>
+        ) : null}
+        {userId ? (
+          <Link href="/dashboard/saved-jobs" className="rounded border bg-white px-3 py-2">
+            Saved Jobs
           </Link>
         ) : null}
         {userId ? (

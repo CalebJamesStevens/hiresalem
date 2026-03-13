@@ -1,6 +1,6 @@
 {
-  "id": "89e7e8f3-b165-4ca1-bc21-4bb13c471d7c",
-  "prevId": "ebfd4485-ba10-44d5-beee-efc0a9093251",
+  "id": "2221df30-878c-4c1a-9c30-637ae257b4cd",
+  "prevId": "89e7e8f3-b165-4ca1-bc21-4bb13c471d7c",
   "version": "6",
   "dialect": "postgresql",
   "tables": {
@@ -185,6 +185,12 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "claimed_at": {
+          "name": "claimed_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
         },
         "logo_url": {
           "name": "logo_url",
@@ -380,6 +386,179 @@
           ]
         }
       }
+    },
+    "public.company_claim_requests": {
+      "name": "company_claim_requests",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "company_id": {
+          "name": "company_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "requester_auth_id": {
+          "name": "requester_auth_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "contact_email": {
+          "name": "contact_email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "message": {
+          "name": "message",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "company_claim_request_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "reviewed_at": {
+          "name": "reviewed_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reviewed_by_auth_id": {
+          "name": "reviewed_by_auth_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rejection_reason": {
+          "name": "rejection_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "company_claim_requests_pending_idx": {
+          "name": "company_claim_requests_pending_idx",
+          "columns": [
+            "company_id",
+            "requester_auth_id"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "company_claim_requests_company_id_companies_id_fk": {
+          "name": "company_claim_requests_company_id_companies_id_fk",
+          "tableFrom": "company_claim_requests",
+          "tableTo": "companies",
+          "columnsFrom": [
+            "company_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "public.engagement_events": {
+      "name": "engagement_events",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "company_id": {
+          "name": "company_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "job_id": {
+          "name": "job_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "event_type": {
+          "name": "event_type",
+          "type": "engagement_event_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "session_key": {
+          "name": "session_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "occurred_at": {
+          "name": "occurred_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "engagement_events_company_id_companies_id_fk": {
+          "name": "engagement_events_company_id_companies_id_fk",
+          "tableFrom": "engagement_events",
+          "tableTo": "companies",
+          "columnsFrom": [
+            "company_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "engagement_events_job_id_jobs_id_fk": {
+          "name": "engagement_events_job_id_jobs_id_fk",
+          "tableFrom": "engagement_events",
+          "tableTo": "jobs",
+          "columnsFrom": [
+            "job_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
     },
     "public.jobs": {
       "name": "jobs",
@@ -625,6 +804,85 @@
         }
       }
     },
+    "public.saved_jobs": {
+      "name": "saved_jobs",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_auth_id": {
+          "name": "user_auth_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "recipient_email": {
+          "name": "recipient_email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "job_id": {
+          "name": "job_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "alerts_enabled": {
+          "name": "alerts_enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "last_alerted_state": {
+          "name": "last_alerted_state",
+          "type": "saved_job_alert_state",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "saved_jobs_user_job_idx": {
+          "name": "saved_jobs_user_job_idx",
+          "columns": [
+            "user_auth_id",
+            "job_id"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "saved_jobs_job_id_jobs_id_fk": {
+          "name": "saved_jobs_job_id_jobs_id_fk",
+          "tableFrom": "saved_jobs",
+          "tableTo": "jobs",
+          "columnsFrom": [
+            "job_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
     "public.saved_searches": {
       "name": "saved_searches",
       "schema": "",
@@ -730,6 +988,25 @@
         "business_pro"
       ]
     },
+    "public.company_claim_request_status": {
+      "name": "company_claim_request_status",
+      "schema": "public",
+      "values": [
+        "pending",
+        "approved",
+        "rejected",
+        "canceled"
+      ]
+    },
+    "public.engagement_event_type": {
+      "name": "engagement_event_type",
+      "schema": "public",
+      "values": [
+        "job_view",
+        "apply_click",
+        "company_view"
+      ]
+    },
     "public.apply_type": {
       "name": "apply_type",
       "schema": "public",
@@ -794,6 +1071,14 @@
         "onsite",
         "hybrid",
         "remote"
+      ]
+    },
+    "public.saved_job_alert_state": {
+      "name": "saved_job_alert_state",
+      "schema": "public",
+      "values": [
+        "live",
+        "closed"
       ]
     }
   },

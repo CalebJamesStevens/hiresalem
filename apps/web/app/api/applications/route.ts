@@ -5,6 +5,7 @@ import { z } from "zod"
 
 import { requireApiRoles } from "@/lib/api-auth"
 import { db } from "@/lib/db"
+import { recordEmployerAnalyticsEvent } from "@/lib/employer-analytics"
 import { isJobPublished } from "@/lib/job-listing-billing"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { getRequestKey } from "@/lib/request"
@@ -154,6 +155,14 @@ export async function POST(req: Request) {
         coverLetter: cleanOptionalText(parsed.data.coverLetter)
       })
       .returning()
+
+    if (job.companyId) {
+      await recordEmployerAnalyticsEvent({
+        companyId: job.companyId,
+        jobId: job.id,
+        eventType: "apply_click"
+      })
+    }
 
     return Response.json(created, { status: 201 })
   } catch (error) {

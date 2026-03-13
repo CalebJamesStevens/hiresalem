@@ -7,6 +7,7 @@ import {
   getCompanyProfileInitials,
   getCompanyPlanValidationErrorCode,
   hasIndexableCompanyProfileContent,
+  shouldBackfillCompanyAsClaimed,
   normalizeCompanyWebsite,
   parseCompanyPlanInput,
   parseCompanyProfileInput,
@@ -298,5 +299,13 @@ describe("public company profile helpers", () => {
         galleryImageUrls: []
       })
     ).toBe(false)
+  })
+})
+
+describe("company claim helpers", () => {
+  test("backfills claimed companies only for non-import owners", () => {
+    expect(shouldBackfillCompanyAsClaimed("user-123")).toBe(true)
+    expect(shouldBackfillCompanyAsClaimed("system:acme-health")).toBe(false)
+    expect(shouldBackfillCompanyAsClaimed("admin-1:company:acme-health")).toBe(false)
   })
 })

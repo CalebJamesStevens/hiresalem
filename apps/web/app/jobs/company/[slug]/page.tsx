@@ -2,6 +2,7 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 
 import { Breadcrumbs } from "@/components/breadcrumbs"
+import { EmployerAnalyticsTracker } from "@/components/employer-analytics-tracker"
 import { FeaturedJobBadge } from "@/components/featured-job-badge"
 import { JsonLd } from "@/components/json-ld"
 import { MarkdownContent } from "@/components/markdown-content"
@@ -161,6 +162,7 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
 
   return (
     <section className="space-y-8">
+      <EmployerAnalyticsTracker companyId={company.id} eventType="company_view" entityKey={company.id} />
       <JsonLd
         data={buildBreadcrumbJsonLd(
           breadcrumbs.map((item) => ({
@@ -228,9 +230,21 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
 
             <div className="space-y-4">
               <div className="space-y-2">
-                <h1 className="text-3xl font-bold tracking-tight text-slate-950 md:text-4xl">
-                  {company.name}
-                </h1>
+                <div className="flex flex-wrap items-center gap-3">
+                  <h1 className="text-3xl font-bold tracking-tight text-slate-950 md:text-4xl">{company.name}</h1>
+                  {company.claimedAt ? (
+                    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-emerald-800">
+                      Claimed business
+                    </span>
+                  ) : (
+                    <Link
+                      href={`/claim-business/${company.slug}`}
+                      className="rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-slate-700"
+                    >
+                      Claim this business page
+                    </Link>
+                  )}
+                </div>
                 <p className="max-w-3xl text-base leading-7 text-slate-700">{introText}</p>
               </div>
 

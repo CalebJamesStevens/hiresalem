@@ -1,6 +1,7 @@
 import Link from "next/link"
 
 import { FeaturedJobBadge } from "@/components/featured-job-badge"
+import { SaveJobButton } from "@/components/save-job-button"
 import { categoryOptions, employmentTypeOptions, workModeOptions } from "@/lib/job-search"
 import type { PublicJobSearchResult } from "@/lib/jobs"
 import { markdownToPlainText } from "@/lib/markdown"
@@ -47,7 +48,7 @@ function formatSalary(job: PublicJobSearchResult) {
   return `${lower ?? upper}${interval}`
 }
 
-export function JobCard({ job }: { job: PublicJobSearchResult }) {
+export function JobCard({ job, initialSaved = false }: { job: PublicJobSearchResult; initialSaved?: boolean }) {
   const description = markdownToPlainText(job.description) || "No description yet."
   const postedAt = job.activatedAt ?? job.createdAt
   const isFeatured = job.isFeatured
@@ -103,6 +104,7 @@ export function JobCard({ job }: { job: PublicJobSearchResult }) {
 
         <div className="flex shrink-0 flex-col items-start gap-3 md:items-end">
           <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">{formatRelativeDate(postedAt)}</p>
+          <SaveJobButton jobId={job.id} initialSaved={initialSaved} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700" />
           <Link href={`/jobs/${job.slug}`} className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white">
             View details
           </Link>

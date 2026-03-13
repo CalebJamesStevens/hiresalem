@@ -1,4 +1,5 @@
 import { EmployerPlanSummaryCard } from "@/components/employer-plan-summary-card"
+import { listPendingCompanyClaimRequests } from "@/lib/company-claims"
 import { getCompanyById, listCompanies } from "@/lib/companies"
 import { requirePageRoles } from "@/lib/page-auth"
 import { companyPlanIds, getCompanyPlanLabel, resolveCompanyPlan } from "@repo/db/plans"
@@ -8,6 +9,8 @@ type AdminBusinessesPageProps = {
     companyId?: string
     updated?: string
     error?: string
+    claimUpdated?: string
+    claimError?: string
   }>
 }
 
@@ -24,6 +27,39 @@ function getErrorMessage(error?: string) {
     return "Unable to update the business plan. Check the fields and try again."
   }
 
+  if (error === "claim_not_found") {
+    return "Claim request not found."
+  }
+
+  if (error === "claim_not_pending") {
+    return "This claim request has already been reviewed."
+  }
+
+  if (error === "already_claimed") {
+    return "That company has already been claimed."
+  }
+
+  if (error === "requester_already_has_company") {
+    return "That requester already manages another company."
+  }
+
+  if (error === "invalid_claim_action") {
+    return "Choose a valid claim review action."
+  }
+
+  if (
+    error === "admin_config_missing" ||
+    error === "admin_unreachable" ||
+    error === "realm_not_found" ||
+    error === "admin_auth_failed" ||
+    error === "service_account_disabled" ||
+    error === "admin_forbidden" ||
+    error === "role_missing" ||
+    error === "role_assign_failed"
+  ) {
+    return "Unable to grant the business role while approving this claim."
+  }
+
   return null
 }
 
@@ -33,11 +69,11 @@ export default async function AdminBusinessesPage({ searchParams }: AdminBusines
   const params = await searchParams
   await requirePageRoles(["admin"], "/admin/businesses")
 
-  const companyOptions = await listCompanies()
+  const [companyOptions, pendingClaims] = await Promise.all([listCompanies(), listPendingCompanyClaimRequests()])
   const selectedCompanyId = params.companyId?.trim() || companyOptions[0]?.id || null
   const company = selectedCompanyId ? await getCompanyById(selectedCompanyId) : null
   const resolvedPlan = company ? resolveCompanyPlan(company) : null
-  const errorMessage = getErrorMessage(params.error)
+  const errorMessage = getErrorMessage(params.error ?? params.claimError)
 
   return (
     <section className="space-y-6">
@@ -50,7 +86,56 @@ export default async function AdminBusinessesPage({ searchParams }: AdminBusines
         <p className="rounded border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">Business plan updated.</p>
       ) : null}
 
+      {params.claimUpdated === "1" ? (
+        <p className="rounded border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">Claim request updated.</p>
+      ) : null}
+
       {errorMessage ? <p className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{errorMessage}</p> : null}
+
+      <section className="space-y-4 rounded-2xl border bg-white p-5 shadow-sm">
+        <div className="space-y-1">
+          <h2 className="text-lg font-semibold text-slate-950">Pending claims</h2>
+          <p className="text-sm text-slate-600">Review businesses waiting for ownership approval.</p>
+        </div>
+        {pendingClaims.length === 0 ? <p className="text-sm text-slate-600">No pending company claims.</p> : null}
+        {pendingClaims.map((claim) => (
+          <article key={claim.id} className="rounded-2xl border border-slate-200 p-4">
+            <div className="space-y-2">
+              <p className="font-medium text-slate-900">
+                {claim.companyName} (/jobs/company/{claim.companySlug})
+              </p>
+              <p className="text-sm text-slate-600">
+                Requester: {claim.requesterAuthId} • {claim.contactEmail}
+              </p>
+              <p className="text-sm text-slate-600">Submitted: {claim.createdAt.toLocaleDateString()}</p>
+              {claim.message ? <p className="text-sm text-slate-700">{claim.message}</p> : null}
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-3">
+              <form action={`/api/admin/company-claims/${claim.id}`} method="post" className="flex flex-wrap gap-3">
+                <input type="hidden" name="returnTo" value="/admin/businesses" />
+                <input type="hidden" name="action" value="approve" />
+                <button type="submit" className="rounded bg-slate-900 px-4 py-2 text-sm text-white">
+                  Approve claim
+                </button>
+              </form>
+              <form action={`/api/admin/company-claims/${claim.id}`} method="post" className="flex flex-wrap gap-3">
+                <input type="hidden" name="returnTo" value="/admin/businesses" />
+                <input type="hidden" name="action" value="reject" />
+                <input
+                  type="text"
+                  name="rejectionReason"
+                  placeholder="Optional rejection reason"
+                  className="rounded border px-3 py-2 text-sm"
+                />
+                <button type="submit" className="rounded border border-slate-300 px-4 py-2 text-sm text-slate-700">
+                  Reject claim
+                </button>
+              </form>
+            </div>
+          </article>
+        ))}
+      </section>
 
       <form action="/admin/businesses" className="rounded-2xl border bg-white p-4 shadow-sm">
         <label htmlFor="companyId" className="block text-sm font-medium text-slate-900">

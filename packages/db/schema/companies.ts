@@ -20,6 +20,7 @@ export const companies = pgTable("companies", {
   slug: text("slug").notNull().unique(),
   name: text("name").notNull(),
   ownerAuthId: text("owner_auth_id").notNull().unique(),
+  claimedAt: timestamp("claimed_at"),
   logoUrl: text("logo_url"),
   shortDescription: text("short_description"),
   website: text("website"),

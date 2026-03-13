@@ -2,11 +2,13 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 
 import { Breadcrumbs } from "@/components/breadcrumbs"
+import { EmployerAnalyticsTracker } from "@/components/employer-analytics-tracker"
 import { FeaturedJobBadge } from "@/components/featured-job-badge"
 import { JsonLd } from "@/components/json-ld"
 import { JobList } from "@/components/job-list"
 import { MarkdownContent } from "@/components/markdown-content"
 import { ApplicationForm } from "@/components/application-form"
+import { SaveJobButton } from "@/components/save-job-button"
 import { TrackedApplyLink } from "@/components/tracked-apply-link"
 import { hasAnyRole, hasRole, normalizeRoles } from "@/lib/authz"
 import { buildEligibleJobPostingJsonLd } from "@/lib/job-posting"
@@ -21,6 +23,7 @@ import { getJobBySlug, listRelatedJobsForJob, type PublicJobDetail } from "@/lib
 import { markdownToPlainText } from "@/lib/markdown"
 import { buildPageMetadata, snippet } from "@/lib/seo"
 import { getJobHubLinksForContext } from "@/lib/seo-taxonomy"
+import { getSavedJob, listSavedJobIdsForUser } from "@/lib/saved-jobs"
 import { buildCompanyJobsPath } from "@/lib/site-paths"
 import { getSessionSafe } from "@/lib/session"
 import { buildBreadcrumbJsonLd, inferJobLocationFromLegacyText } from "@/lib/structured-data"
@@ -133,7 +136,11 @@ export default async function JobPage({ params }: JobPageProps) {
     notFound()
   }
 
-  const [relatedJobs] = await Promise.all([listRelatedJobsForJob(job, 4)])
+  const [relatedJobs, savedJob, relatedSavedJobIds] = await Promise.all([
+    listRelatedJobsForJob(job, 4),
+    userId ? getSavedJob(userId, job.id) : Promise.resolve(null),
+    userId ? listSavedJobIdsForUser(userId) : Promise.resolve([])
+  ])
   const canApplyInApp = job.applyType === "onsite" && isPublished && hasAnyRole(roles, ["user", "admin"])
   const signedInName = typeof session?.user?.name === "string" ? session.user.name : null
   const signedInEmail = typeof session?.user?.email === "string" ? session.user.email : null
@@ -234,6 +241,7 @@ export default async function JobPage({ params }: JobPageProps) {
 
   return (
     <article className={mobileApplyCta ? "min-w-0 space-y-8 pb-32 lg:pb-0" : "min-w-0 space-y-8"}>
+      {job.companyId ? <EmployerAnalyticsTracker companyId={job.companyId} jobId={job.id} eventType="job_view" entityKey={job.id} /> : null}
       <JsonLd
         data={buildBreadcrumbJsonLd(
           breadcrumbs.map((item) => ({
@@ -274,6 +282,7 @@ export default async function JobPage({ params }: JobPageProps) {
                 )}
               </p>
             ) : null}
+            <SaveJobButton jobId={job.id} initialSaved={Boolean(savedJob)} />
           </div>
           {!isPublished ? (
             <p className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
@@ -329,7 +338,7 @@ export default async function JobPage({ params }: JobPageProps) {
                 <h2 className="text-xl font-semibold text-slate-900">Related jobs</h2>
                 <p className="mt-1 text-sm text-slate-600">More local openings related by company, location, or role profile.</p>
               </div>
-              <JobList jobs={relatedJobs} />
+              <JobList jobs={relatedJobs} savedJobIds={relatedSavedJobIds} />
             </section>
           ) : null}
 
@@ -366,6 +375,8 @@ export default async function JobPage({ params }: JobPageProps) {
                 {isPublished && job.applyUrl ? (
                   <TrackedApplyLink
                     href={job.applyUrl}
+                    companyId={job.companyId}
+                    jobId={job.id}
                     className="inline-flex rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white"
                   >
                     Apply on company site
@@ -432,7 +443,7 @@ export default async function JobPage({ params }: JobPageProps) {
         <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-4 pt-3 shadow-[0_-12px_30px_rgba(15,23,42,0.12)] backdrop-blur supports-[backdrop-filter]:bg-white/85 lg:hidden">
           <div className="mx-auto w-full max-w-md pb-[calc(env(safe-area-inset-bottom)+1rem)]">
             {mobileApplyCta.kind === "external" ? (
-              <TrackedApplyLink href={mobileApplyCta.href} className={mobileApplyButtonClassName}>
+              <TrackedApplyLink href={mobileApplyCta.href} companyId={job.companyId} jobId={job.id} className={mobileApplyButtonClassName}>
                 {mobileApplyCta.label}
               </TrackedApplyLink>
             ) : mobileApplyCta.kind === "internal" ? (

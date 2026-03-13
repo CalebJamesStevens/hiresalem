@@ -8,6 +8,7 @@ import { SaveSearchPanel } from "@/components/save-search-panel"
 import { allJobsLandingLinks, allResourceArticleLinks, primaryLandingLinks } from "@/lib/seo-taxonomy"
 import { buildJobsSearchPath, getJobsSearchChips, hasActiveJobsSearchFilters, parseJobsSearchParams, type JobsSearchParams } from "@/lib/job-search"
 import { searchPublicJobs } from "@/lib/jobs"
+import { listSavedJobIdsForUser } from "@/lib/saved-jobs"
 import {
   buildPageMetadata,
   getJobsPageCanonicalPath,
@@ -17,6 +18,7 @@ import {
   isCleanJobsIndexPage
 } from "@/lib/seo"
 import { buildCollectionPageJsonLd } from "@/lib/structured-data"
+import { getSessionSafe } from "@/lib/session"
 
 export const revalidate = 300
 
@@ -52,7 +54,12 @@ export async function generateMetadata({ searchParams }: JobsPageProps) {
 
 export default async function JobsPage({ searchParams }: JobsPageProps) {
   const parsedSearchParams = parseJobsSearchParams(await searchParams)
-  const searchResult = await searchPublicJobs(parsedSearchParams)
+  const session = await getSessionSafe()
+  const userId = session?.user?.id
+  const [searchResult, savedJobIds] = await Promise.all([
+    searchPublicJobs(parsedSearchParams),
+    userId ? listSavedJobIdsForUser(userId) : Promise.resolve([])
+  ])
 
   const chips = getJobsSearchChips(searchResult.appliedFilters)
   const hasFilters = hasActiveJobsSearchFilters(searchResult.appliedFilters)
@@ -151,7 +158,7 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
           </div>
         ) : null}
 
-        {searchResult.results.length > 0 ? <JobList jobs={searchResult.results} /> : null}
+        {searchResult.results.length > 0 ? <JobList jobs={searchResult.results} savedJobIds={savedJobIds} /> : null}
 
         {searchResult.total > searchResult.pageSize ? (
           <nav className="flex flex-wrap items-center gap-2" aria-label="Pagination">

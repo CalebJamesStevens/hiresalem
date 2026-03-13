@@ -20,6 +20,8 @@ export const COMPANY_WEBSITE_MAX_LENGTH = 500
 export const COMPANY_PLAN_OVERRIDE_REASON_MAX_LENGTH = 500
 export const COMPANY_ENHANCED_TEXT_MAX_LENGTH = 5000
 export const COMPANY_MEDIA_URL_MAX_LENGTH = 500
+export const COMPANY_CLAIM_MESSAGE_MAX_LENGTH = 1000
+export const COMPANY_CLAIM_REJECTION_REASON_MAX_LENGTH = 500
 
 export const companySocialLinkFields = [
   {
@@ -183,6 +185,14 @@ export function toCompanySlug(value: string) {
     .replace(/-+/g, "-")
 }
 
+export function shouldBackfillCompanyAsClaimed(ownerAuthId: string) {
+  return !ownerAuthId.startsWith("system:") && !ownerAuthId.includes(":company:")
+}
+
+export function isCompanyClaimed(company: Pick<Company, "claimedAt">) {
+  return company.claimedAt !== null
+}
+
 export async function getCompanyByOwnerAuthId(ownerAuthId: string) {
   const [company] = await db.select().from(companies).where(eq(companies.ownerAuthId, ownerAuthId)).limit(1)
   return company ?? null
@@ -204,6 +214,9 @@ export async function listCompanies() {
       id: companies.id,
       name: companies.name,
       slug: companies.slug,
+      ownerAuthId: companies.ownerAuthId,
+      claimedAt: companies.claimedAt,
+      createdAt: companies.createdAt,
       logoUrl: companies.logoUrl,
       shortDescription: companies.shortDescription,
       website: companies.website,

@@ -27,6 +27,9 @@
     "./schema/jobs": "./schema/jobs.ts",
     "./schema/companies": "./schema/companies.ts",
     "./schema/applications": "./schema/applications.ts",
-    "./schema/saved-searches": "./schema/saved-searches.ts"
+    "./schema/saved-searches": "./schema/saved-searches.ts",
+    "./schema/company-claims": "./schema/company-claims.ts",
+    "./schema/saved-jobs": "./schema/saved-jobs.ts",
+    "./schema/engagement-events": "./schema/engagement-events.ts"
   }
 }
