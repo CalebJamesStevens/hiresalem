@@ -41,33 +41,7 @@ export default async function HomePage() {
 
       <div className="space-y-8 md:space-y-10">
         <section>
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.95fr)] lg:items-start">
-            <div className="space-y-3">
-              <div>
-                <p className="hidden text-sm font-semibold uppercase tracking-[0.22em] text-slate-500 lg:block">Search Salem-area jobs</p>
-                <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950 md:text-4xl">Find Salem, Oregon jobs from local employers</h1>
-              </div>
-              <div className="hidden flex-wrap gap-2 text-sm lg:flex">
-                <Link href="/jobs/salem" className="rounded-full bg-slate-900 px-4 py-2 font-medium text-white">
-                  Browse Salem jobs
-                </Link>
-                <Link href="/jobs" className="rounded-full border border-slate-300 px-4 py-2 font-medium text-slate-700">
-                  Open all listings
-                </Link>
-              </div>
-              {!userId ? (
-                <div className="hidden rounded-[1.5rem] bg-slate-950 p-4 text-slate-50 lg:block">
-                  <h2 className="text-lg font-semibold">Want updates when new jobs go live?</h2>
-                  <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-sm text-slate-300">Create an account to stay on top of fresh Salem-area openings.</p>
-                    <Link href="/signup" className="inline-flex rounded-full bg-white px-5 py-2.5 text-sm font-medium text-slate-950">
-                      Create an account
-                    </Link>
-                  </div>
-                </div>
-              ) : null}
-            </div>
-
+          <div className="space-y-4">
             <form action="/jobs" method="get" className="rounded-[1.5rem] border border-slate-200 bg-white p-3 shadow-sm">
               <div className="grid gap-3 md:grid-cols-[minmax(0,1.6fr)_minmax(220px,1fr)_auto]">
                 <label className="space-y-1">
@@ -91,6 +65,36 @@ export default async function HomePage() {
                 </button>
               </div>
             </form>
+
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.95fr)] lg:items-start">
+              <div className="space-y-3">
+                <div>
+                  <p className="hidden text-sm font-semibold uppercase tracking-[0.22em] text-slate-500 lg:block">Search Salem-area jobs</p>
+                  <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950 md:text-4xl">Find Salem, Oregon jobs from local employers</h1>
+                </div>
+                <div className="hidden flex-wrap gap-2 text-sm lg:flex">
+                  <Link href="/jobs/salem" className="rounded-full bg-slate-900 px-4 py-2 font-medium text-white">
+                    Browse Salem jobs
+                  </Link>
+                  <Link href="/jobs" className="rounded-full border border-slate-300 px-4 py-2 font-medium text-slate-700">
+                    Open all listings
+                  </Link>
+                </div>
+                {!userId ? (
+                  <div className="hidden rounded-[1.5rem] bg-slate-950 p-4 text-slate-50 lg:block">
+                    <h2 className="text-lg font-semibold">Want updates when new jobs go live?</h2>
+                    <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="text-sm text-slate-300">Create an account to stay on top of fresh Salem-area openings.</p>
+                      <Link href="/signup" className="inline-flex rounded-full bg-white px-5 py-2.5 text-sm font-medium text-slate-950">
+                        Create an account
+                      </Link>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="hidden lg:block" />
+            </div>
           </div>
         </section>
 
