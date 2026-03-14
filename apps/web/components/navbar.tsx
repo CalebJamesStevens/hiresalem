@@ -85,8 +85,8 @@ export function Navbar() {
 
   return (
     <header className="relative z-[90] border-b bg-white/80 backdrop-blur">
-      <nav className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
-        <SiteBrand iconClassName="h-11 w-11" />
+      <nav className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 md:py-4">
+        <SiteBrand iconClassName="h-9 w-9 md:h-11 md:w-11" labelClassName="text-sm md:text-base" />
 
         <ul className="hidden items-center gap-4 text-sm md:flex">
           {publicNavItems.map((item) => (

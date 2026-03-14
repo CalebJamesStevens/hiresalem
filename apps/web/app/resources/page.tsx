@@ -16,7 +16,7 @@ export const metadata = buildPageMetadata({
 
 export default function ResourcesPage() {
   return (
-    <section className="space-y-8">
+    <section className="space-y-6 md:space-y-8">
       <JsonLd
         data={buildCollectionPageJsonLd({
           name: "Salem job search resources",
@@ -29,11 +29,11 @@ export default function ResourcesPage() {
         })}
       />
 
-      <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+      <section className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm md:p-6">
         <div className="space-y-3">
           <p className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-500">Local hiring guides</p>
-          <h1 className="text-4xl font-bold tracking-tight text-slate-950">Salem job search resources</h1>
-          <p className="max-w-3xl text-base leading-7 text-slate-700">
+          <h1 className="text-3xl font-bold tracking-tight text-slate-950 md:text-4xl">Salem job search resources</h1>
+          <p className="max-w-3xl text-sm leading-6 text-slate-700 md:text-base md:leading-7">
             These guides are written for Salem-area job seekers who want better local search habits, stronger applications, and a clearer view of
             the Salem and Keizer market.
           </p>

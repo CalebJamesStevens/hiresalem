@@ -56,7 +56,7 @@ export default function EmployersPage() {
   ]
 
   return (
-    <section className="space-y-8">
+    <section className="space-y-6 md:space-y-8">
       <JsonLd
         data={buildBreadcrumbJsonLd(
           breadcrumbs.map((item) => ({
@@ -78,19 +78,21 @@ export default function EmployersPage() {
       />
       <JsonLd data={buildFaqJsonLd(employerFaqs)} />
 
-      <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-        <Breadcrumbs items={breadcrumbs} />
-        <div className="mt-4 grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)]">
-          <div className="space-y-4">
+      <section className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm md:p-6">
+        <div className="hidden md:block">
+          <Breadcrumbs items={breadcrumbs} />
+        </div>
+        <div className="mt-0 grid gap-4 md:mt-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)]">
+          <div className="order-2 space-y-4 lg:order-1">
             <p className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-500">For Salem employers</p>
-            <h1 className="max-w-3xl text-4xl font-bold tracking-tight text-slate-950 md:text-5xl">Post jobs and hire in Salem, Oregon</h1>
+            <h1 className="max-w-3xl text-3xl font-bold tracking-tight text-slate-950 md:text-5xl">Post jobs and hire in Salem, Oregon</h1>
             <div className="max-w-3xl space-y-4 text-base leading-7 text-slate-700">
               <p>
                 HireSalem is built for employers who want local reach. Instead of dropping a job into a generic national feed, you can publish into a
                 Salem-first hiring surface with city pages, category pages, job detail pages, and public company profiles designed around the
                 mid-valley market.
               </p>
-              <p>
+              <p className="hidden md:block">
                 That matters for Salem, Keizer, and nearby employers who need local candidates to understand the job quickly, compare opportunities,
                 and come back to the company page even between hiring cycles.
               </p>
@@ -105,7 +107,7 @@ export default function EmployersPage() {
             </div>
           </div>
 
-          <div className="rounded-[1.75rem] bg-slate-950 p-6 text-slate-50">
+          <div className="order-1 rounded-[1.75rem] bg-slate-950 p-5 text-slate-50 lg:order-2 lg:p-6">
             <h2 className="text-xl font-semibold">What employers get</h2>
             <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-200">
               <li>Free business setup with a public company profile.</li>

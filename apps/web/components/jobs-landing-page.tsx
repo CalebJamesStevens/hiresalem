@@ -2,6 +2,7 @@ import Link from "next/link"
 
 import { Breadcrumbs } from "@/components/breadcrumbs"
 import { FaqSection } from "@/components/faq-section"
+import { InlineEmployerPromoCard } from "@/components/inline-employer-promo-card"
 import { JsonLd } from "@/components/json-ld"
 import { JobList } from "@/components/job-list"
 import { LinkCardGrid } from "@/components/link-card-grid"
@@ -64,21 +65,23 @@ export function JobsLandingPageView({
   const browseAllHref = "/jobs"
 
   return (
-    <section className="space-y-8">
+    <section className="space-y-6 md:space-y-8">
       <JsonLd data={breadcrumbJsonLd} />
       <JsonLd data={collectionJsonLd} />
       <JsonLd data={faqJsonLd} />
 
-      <div className="space-y-4 rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-        <Breadcrumbs items={breadcrumbs} />
+      <div className="space-y-4 rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm md:p-6">
+        <div className="hidden md:block">
+          <Breadcrumbs items={breadcrumbs} />
+        </div>
         <div className="space-y-3">
           <p className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-500">{page.eyebrow}</p>
-          <h1 className="max-w-3xl text-4xl font-bold tracking-tight text-slate-950 md:text-5xl">{page.heroTitle}</h1>
+          <h1 className="max-w-3xl text-3xl font-bold tracking-tight text-slate-950 md:text-5xl">{page.heroTitle}</h1>
         </div>
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)]">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)]">
           <div className="space-y-4">
-            {page.intro.map((paragraph) => (
-              <p key={paragraph} className="max-w-3xl text-base leading-7 text-slate-700">
+            {page.intro.map((paragraph, index) => (
+              <p key={paragraph} className={`max-w-3xl text-base leading-7 text-slate-700 ${index > 0 ? "hidden md:block" : ""}`}>
                 {paragraph}
               </p>
             ))}
@@ -89,7 +92,7 @@ export function JobsLandingPageView({
               <p>{searchResult.total === 1 ? "1 live job matches this page." : `${searchResult.total.toLocaleString()} live jobs match this page.`}</p>
               {latestJobDate ? <p className="mt-1 text-slate-300">Latest listing posted {latestJobDate}.</p> : null}
             </div>
-            <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-200">
+            <ul className="mt-4 hidden space-y-3 text-sm leading-6 text-slate-200 md:block">
               {page.highlights.map((item) => (
                 <li key={item}>{item}</li>
               ))}
@@ -102,8 +105,6 @@ export function JobsLandingPageView({
           </div>
         </div>
       </div>
-
-      {featuredLinks.length > 0 ? <LinkCardGrid title={featuredLinksTitle} items={featuredLinks} columns="md:grid-cols-2 xl:grid-cols-3" /> : null}
 
       <section className="space-y-4">
         <div className="flex items-end justify-between gap-3">
@@ -119,7 +120,7 @@ export function JobsLandingPageView({
         </div>
 
         {searchResult.results.length > 0 ? (
-          <JobList jobs={searchResult.results} />
+          <JobList jobs={searchResult.results} inlinePromo={<InlineEmployerPromoCard />} />
         ) : (
           <div className="rounded-[2rem] border border-dashed border-slate-300 bg-white p-8 text-center">
             <h3 className="text-xl font-semibold text-slate-900">No fresh matches right now</h3>
@@ -129,6 +130,8 @@ export function JobsLandingPageView({
           </div>
         )}
       </section>
+
+      {featuredLinks.length > 0 ? <LinkCardGrid title={featuredLinksTitle} items={featuredLinks} columns="md:grid-cols-2 xl:grid-cols-3" /> : null}
 
       {featuredEmployers.length > 0 ? (
         <section className="space-y-4">

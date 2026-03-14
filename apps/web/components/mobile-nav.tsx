@@ -45,7 +45,7 @@ export function MobileNav({
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="inline-flex min-h-11 items-center justify-center rounded-full border border-slate-300 bg-white px-4 text-sm font-medium text-slate-900"
+        className="inline-flex min-h-10 items-center justify-center rounded-full border border-slate-300 bg-white px-4 text-sm font-medium text-slate-900"
         aria-expanded={isOpen}
         aria-controls="mobile-nav-drawer"
       >

@@ -1,5 +1,6 @@
 import Link from "next/link"
 
+import { InlineEmployerPromoCard } from "@/components/inline-employer-promo-card"
 import { JsonLd } from "@/components/json-ld"
 import { JobList } from "@/components/job-list"
 import { JobsSearchForm } from "@/components/jobs-search-form"
@@ -73,7 +74,7 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
   const resultSummary = searchResult.total === 1 ? "1 job found" : `${searchResult.total.toLocaleString()} jobs found`
 
   return (
-    <section className="space-y-8">
+    <section className="space-y-6 md:space-y-8">
       {isIndexablePage ? (
         <JsonLd
           data={buildCollectionPageJsonLd({
@@ -88,45 +89,8 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
         />
       ) : null}
 
-      <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div className="space-y-3">
-            <p className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-500">All current HireSalem listings</p>
-            <h1 className="text-3xl font-bold tracking-tight text-slate-950 md:text-4xl">Browse all current jobs on HireSalem</h1>
-            <p className="max-w-3xl text-base leading-7 text-slate-700">
-              Use this page when you want the full searchable index. Search by keyword, filter by role details, or jump into the Salem jobs hub when
-              you want the strongest local landing page for broad Salem intent.
-            </p>
-          </div>
-          <Link href="/jobs/salem" className="text-sm font-medium text-slate-700 underline underline-offset-4">
-            Start with Salem jobs
-          </Link>
-        </div>
-      </section>
-
-      <section className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="space-y-1">
-            <h2 className="text-xl font-semibold text-slate-950">Need the local overview first?</h2>
-            <p className="text-sm leading-6 text-slate-600">
-              Start on the Salem jobs hub for the main local landing page, then come back here when you want every current listing and filter state.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Link href="/jobs/salem" className="rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white">
-              Open Salem jobs
-            </Link>
-            {primaryLandingLinks.slice(2, 5).map((item) => (
-              <Link key={item.href} href={item.href} className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700">
-                {item.title}
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <JobsSearchForm params={searchResult.appliedFilters} />
-
+      <h1 className="text-3xl font-bold tracking-tight text-slate-950 md:text-4xl">Browse all current jobs on HireSalem</h1>
+      <JobsSearchForm params={searchResult.appliedFilters} />      
       <div className="space-y-4">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <p className="text-sm font-medium text-slate-700">{resultSummary}</p>
@@ -158,7 +122,7 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
           </div>
         ) : null}
 
-        {searchResult.results.length > 0 ? <JobList jobs={searchResult.results} savedJobIds={savedJobIds} /> : null}
+        {searchResult.results.length > 0 ? <JobList jobs={searchResult.results} savedJobIds={savedJobIds} inlinePromo={<InlineEmployerPromoCard />} /> : null}
 
         {searchResult.total > searchResult.pageSize ? (
           <nav className="flex flex-wrap items-center gap-2" aria-label="Pagination">
@@ -194,6 +158,20 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
 
         <SaveSearchPanel currentPath={canonicalCurrentPath} />
       </div>
+      <section className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm md:p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="flex flex-wrap gap-2">
+            <Link href="/jobs/salem" className="rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white">
+              Open Salem jobs
+            </Link>
+            {primaryLandingLinks.slice(2, 5).map((item) => (
+              <Link key={item.href} href={item.href} className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700">
+                {item.title}
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
 
       <LinkCardGrid title="Browse Salem city and category pages" items={allJobsLandingLinks} columns="md:grid-cols-2 xl:grid-cols-3" />
       <LinkCardGrid title="Local job seeker guides" items={allResourceArticleLinks} columns="md:grid-cols-2" />

@@ -76,7 +76,7 @@ export function JobsSearchForm({ params }: { params: JobsSearchParams }) {
   }, [isFiltersOpen])
 
   return (
-    <form action="/jobs" method="get" className="space-y-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+    <form action="/jobs" method="get" className="space-y-2 rounded-[1.75rem] border border-slate-200 bg-white p-3 shadow-sm">
       <div className="grid gap-2 md:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)_auto]">
         <div className="space-y-1">
           <label htmlFor="q" className="sr-only">
@@ -87,7 +87,7 @@ export function JobsSearchForm({ params }: { params: JobsSearchParams }) {
             name="q"
             defaultValue={params.q}
             placeholder="Job title, company, or skill"
-            className="min-h-11 w-full rounded-full border px-4 py-2"
+            className="min-h-12 w-full rounded-full border px-4 py-2"
           />
         </div>
 
@@ -100,12 +100,12 @@ export function JobsSearchForm({ params }: { params: JobsSearchParams }) {
             name="location"
             defaultValue={params.location}
             placeholder="Salem, Keizer, Remote"
-            className="min-h-11 w-full rounded-full border px-4 py-2"
+            className="min-h-12 w-full rounded-full border px-4 py-2"
           />
         </div>
 
-        <div className="flex items-end gap-2">
-          <button type="submit" className="min-h-11 rounded-full bg-slate-900 px-5 py-2 text-sm font-medium text-white">
+        <div className="flex w-full items-end gap-2 md:w-auto">
+          <button type="submit" className="min-h-12 w-full rounded-full bg-slate-900 px-5 py-2 text-sm font-medium text-white md:w-auto">
             Search jobs
           </button>
         </div>
