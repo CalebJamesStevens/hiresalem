@@ -65,6 +65,7 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
   const chips = getJobsSearchChips(searchResult.appliedFilters)
   const hasFilters = hasActiveJobsSearchFilters(searchResult.appliedFilters)
   const totalPages = Math.max(1, Math.ceil(searchResult.total / searchResult.pageSize))
+  const currentSearchPath = buildJobsSearchPath(searchResult.appliedFilters)
   const canonicalCurrentPath = buildJobsSearchPath({ ...searchResult.appliedFilters, page: 1 })
   const isBoardEmpty = searchResult.total === 0 && !hasFilters
   const isNoMatch = searchResult.total === 0 && hasFilters
@@ -90,8 +91,23 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
       ) : null}
 
       <h1 className="text-3xl font-bold tracking-tight text-slate-950 md:text-4xl">Browse all current jobs on HireSalem</h1>
-      <JobsSearchForm params={searchResult.appliedFilters} />      
+      <JobsSearchForm params={searchResult.appliedFilters} />
       <div className="space-y-4">
+        {!session ? (
+          <div className="flex flex-col items-center text-center">
+            <p className="text-sm text-slate-700">Create an account or sign in to personalize your jobs search.</p>
+            <Link
+              href={`/signup?callbackUrl=${encodeURIComponent(currentSearchPath)}`}
+              className="mt-3 inline-flex min-w-44 items-center justify-center gap-2 rounded-xl bg-[#2C81D6] px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-[#236CB3]"
+            >
+              Get Started
+              <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" className="h-4 w-4">
+                <path d="M4.167 10h11.666M10 4.167 15.833 10 10 15.833" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </Link>
+          </div>
+        ) : null}
+
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <p className="text-sm font-medium text-slate-700">{resultSummary}</p>
           {chips.length > 0 ? (
