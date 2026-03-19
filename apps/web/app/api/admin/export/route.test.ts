@@ -23,7 +23,12 @@ const buildAdminDataExportMock = mock(async () => ({
       slug: "operations-manager",
       title: "Operations Manager"
     }
-  ]
+  ],
+  jobSelection: {
+    limit: 5,
+    maxAgeDays: null,
+    createdSince: null
+  }
 }))
 
 mock.module("@/lib/api-auth", () => ({
@@ -31,10 +36,13 @@ mock.module("@/lib/api-auth", () => ({
 }))
 
 mock.module("@/lib/admin-export", () => ({
+  ADMIN_EXPORT_JOB_LIMIT: 5,
   buildAdminDataExport: buildAdminDataExportMock
 }))
 
 describe("GET /api/admin/export", () => {
+  const defaultRequest = new Request("http://localhost/api/admin/export")
+
   beforeEach(() => {
     requireApiRolesMock.mockClear()
     buildAdminDataExportMock.mockClear()
@@ -46,7 +54,7 @@ describe("GET /api/admin/export", () => {
     })
 
     const { GET } = await import("@/app/api/admin/export/route")
-    const response = await GET()
+    const response = await GET(defaultRequest)
     if (!response) {
       throw new Error("Expected a response")
     }
@@ -57,13 +65,17 @@ describe("GET /api/admin/export", () => {
 
   test("returns a downloadable admin export for admins", async () => {
     const { GET } = await import("@/app/api/admin/export/route")
-    const response = await GET()
+    const response = await GET(defaultRequest)
     if (!response) {
       throw new Error("Expected a response")
     }
 
     expect(response.status).toBe(200)
     expect(buildAdminDataExportMock).toHaveBeenCalledTimes(1)
+    expect(buildAdminDataExportMock).toHaveBeenCalledWith({
+      jobLimit: 5,
+      jobMaxAgeDays: null
+    })
     expect(response.headers.get("content-type")).toBe("application/json; charset=utf-8")
     expect(response.headers.get("cache-control")).toBe("no-store")
     expect(response.headers.get("content-disposition")).toBe(
@@ -84,7 +96,54 @@ describe("GET /api/admin/export", () => {
           slug: "operations-manager",
           title: "Operations Manager"
         }
-      ]
+      ],
+      jobSelection: {
+        limit: 5,
+        maxAgeDays: null,
+        createdSince: null
+      }
+    })
+  })
+
+  test("supports exporting every job across all time", async () => {
+    const { GET } = await import("@/app/api/admin/export/route")
+    const response = await GET(new Request("http://localhost/api/admin/export?allJobs=on&allTime=on"))
+    if (!response) {
+      throw new Error("Expected a response")
+    }
+
+    expect(response.status).toBe(200)
+    expect(buildAdminDataExportMock).toHaveBeenCalledWith({
+      jobLimit: null,
+      jobMaxAgeDays: null
+    })
+  })
+
+  test("uses validated numeric export options from the query string", async () => {
+    const { GET } = await import("@/app/api/admin/export/route")
+    const response = await GET(new Request("http://localhost/api/admin/export?jobLimit=100&jobMaxAgeDays=30"))
+    if (!response) {
+      throw new Error("Expected a response")
+    }
+
+    expect(response.status).toBe(200)
+    expect(buildAdminDataExportMock).toHaveBeenCalledWith({
+      jobLimit: 100,
+      jobMaxAgeDays: 30
+    })
+  })
+
+  test("still supports legacy all query values", async () => {
+    const { GET } = await import("@/app/api/admin/export/route")
+    const response = await GET(new Request("http://localhost/api/admin/export?jobLimit=all&jobMaxAgeDays=all"))
+    if (!response) {
+      throw new Error("Expected a response")
+    }
+
+    expect(response.status).toBe(200)
+    expect(buildAdminDataExportMock).toHaveBeenCalledWith({
+      jobLimit: null,
+      jobMaxAgeDays: null
     })
   })
 })
