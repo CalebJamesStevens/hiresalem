@@ -1,10 +1,13 @@
-import { NextResponse } from "next/server"
-
 import { signOut } from "@/auth"
 import { normalizeCallbackPath } from "@/lib/redirects"
 
-function buildRedirect(request: Request, pathname: string) {
-  return NextResponse.redirect(new URL(pathname, request.url), 303)
+function redirectTo(location: string) {
+  return new Response(null, {
+    status: 303,
+    headers: {
+      Location: location
+    }
+  })
 }
 
 export async function POST(request: Request) {
@@ -16,5 +19,5 @@ export async function POST(request: Request) {
     redirectTo: callbackUrl
   })
 
-  return buildRedirect(request, callbackUrl)
+  return redirectTo(callbackUrl)
 }

@@ -1,11 +1,14 @@
 import { AuthError } from "next-auth"
-import { NextResponse } from "next/server"
-
 import { signIn } from "@/auth"
 import { normalizeCallbackPath } from "@/lib/redirects"
 
-function buildRedirect(request: Request, location: string) {
-  return NextResponse.redirect(new URL(location, request.url), 303)
+function redirectTo(location: string) {
+  return new Response(null, {
+    status: 303,
+    headers: {
+      Location: location
+    }
+  })
 }
 
 export async function POST(request: Request) {
@@ -22,14 +25,11 @@ export async function POST(request: Request) {
     })
   } catch (error) {
     if (error instanceof AuthError) {
-      const redirectUrl = new URL("/signin", request.url)
-      redirectUrl.searchParams.set("error", "credentials")
-      redirectUrl.searchParams.set("callbackUrl", callbackUrl)
-      return NextResponse.redirect(redirectUrl, 303)
+      return redirectTo(`/signin?error=credentials&callbackUrl=${encodeURIComponent(callbackUrl)}`)
     }
 
     throw error
   }
 
-  return buildRedirect(request, callbackUrl)
+  return redirectTo(callbackUrl)
 }

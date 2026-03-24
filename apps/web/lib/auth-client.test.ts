@@ -3,19 +3,23 @@ import { describe, expect, test } from "bun:test"
 import { getSignOutCallbackUrl } from "@/lib/auth-client"
 
 describe("getSignOutCallbackUrl", () => {
-  test("builds an absolute callback URL from the current origin", () => {
-    expect(getSignOutCallbackUrl("https://hiresalem.com")).toBe("https://hiresalem.com/")
+  test("returns a relative callback path for production origins", () => {
+    expect(getSignOutCallbackUrl("https://hiresalem.com")).toBe("/")
   })
 
-  test("preserves localhost during local development", () => {
-    expect(getSignOutCallbackUrl("http://localhost:3000")).toBe("http://localhost:3000/")
+  test("returns a relative callback path for localhost origins", () => {
+    expect(getSignOutCallbackUrl("http://localhost:3000")).toBe("/")
   })
 
   test("falls back to the relative path when the origin is unavailable", () => {
     expect(getSignOutCallbackUrl(undefined)).toBe("/")
   })
 
-  test("falls back to the relative path when the origin is invalid", () => {
-    expect(getSignOutCallbackUrl("not-a-url")).toBe("/")
+  test("normalizes non-root relative paths", () => {
+    expect(getSignOutCallbackUrl("https://hiresalem.com", "/dashboard")).toBe("/dashboard")
+  })
+
+  test("falls back to root when the provided path is not site-relative", () => {
+    expect(getSignOutCallbackUrl("not-a-url", "dashboard")).toBe("/")
   })
 })
