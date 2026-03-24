@@ -1,9 +1,4 @@
 import Link from "next/link"
-import { AuthError } from "next-auth"
-import { redirect } from "next/navigation"
-
-import { signIn } from "@/auth"
-import { registerUserInKeycloak } from "@/lib/keycloak"
 
 type SignUpPageProps = {
   searchParams: Promise<{
@@ -11,6 +6,8 @@ type SignUpPageProps = {
     error?: string
   }>
 }
+
+export const dynamic = "force-dynamic"
 
 function errorMessage(error: string | undefined) {
   if (!error) {
@@ -74,48 +71,7 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
 
       {message ? <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{message}</p> : null}
 
-      <form
-        action={async (formData) => {
-          "use server"
-
-          const name = String(formData.get("name") ?? "").trim()
-          const email = String(formData.get("email") ?? "").trim().toLowerCase()
-          const password = String(formData.get("password") ?? "")
-          const confirmPassword = String(formData.get("confirmPassword") ?? "")
-          const redirectTo = String(formData.get("callbackUrl") ?? "/dashboard")
-
-          const encodedCallback = encodeURIComponent(redirectTo)
-
-          if (password.length < 8) {
-            redirect(`/signup?error=password_length&callbackUrl=${encodedCallback}`)
-          }
-
-          if (password !== confirmPassword) {
-            redirect(`/signup?error=password_mismatch&callbackUrl=${encodedCallback}`)
-          }
-
-          const created = await registerUserInKeycloak({ name, email, password })
-
-          if (!created.ok) {
-            redirect(`/signup?error=${created.reason}&callbackUrl=${encodedCallback}`)
-          }
-
-          try {
-            await signIn("credentials", {
-              email,
-              password,
-              redirectTo
-            })
-          } catch (error) {
-            if (error instanceof AuthError) {
-              redirect(`/signin?error=credentials&callbackUrl=${encodedCallback}`)
-            }
-
-            throw error
-          }
-        }}
-        className="space-y-4"
-      >
+      <form method="post" action="/api/account/signup" className="space-y-4">
         <input type="hidden" name="callbackUrl" value={callbackUrl} />
 
         <div className="space-y-1">

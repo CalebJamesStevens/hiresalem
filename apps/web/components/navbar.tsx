@@ -1,7 +1,6 @@
 "use client"
 
 import Link from "next/link"
-import { signOut } from "next-auth/react"
 import { useEffect, useState } from "react"
 
 import { SiteBrand } from "@/components/site-brand"
@@ -67,15 +66,6 @@ export function Navbar() {
   const canBecomeBusiness = Boolean(userId) && !canPost
   const signOutCallbackUrl = getSignOutCallbackUrl(globalThis.location?.origin)
 
-  async function handleSignOut() {
-    await signOut({
-      redirect: false,
-      callbackUrl: signOutCallbackUrl
-    })
-
-    globalThis.location.assign(signOutCallbackUrl)
-  }
-
   const secondaryNavItems: NavItem[] = [
     canPost ? { href: "/post-job", label: "Post job" } : null,
     userId ? { href: "/dashboard", label: "Dashboard" } : null,
@@ -107,15 +97,12 @@ export function Navbar() {
 
           {userId ? (
             <li>
-              <button
-                type="button"
-                onClick={() => {
-                  void handleSignOut()
-                }}
-                className="text-slate-600 hover:text-slate-900"
-              >
-                Sign out
-              </button>
+              <form method="post" action="/api/account/signout">
+                <input type="hidden" name="callbackUrl" value={signOutCallbackUrl} />
+                <button type="submit" className="text-slate-600 hover:text-slate-900">
+                  Sign out
+                </button>
+              </form>
             </li>
           ) : (
             <li>
@@ -128,15 +115,12 @@ export function Navbar() {
 
         <MobileNav primaryItems={publicNavItems} secondaryItems={secondaryNavItems}>
           {userId ? (
-            <button
-              type="button"
-              onClick={() => {
-                void handleSignOut()
-              }}
-              className="min-h-11 text-left text-base font-medium text-slate-900"
-            >
-              Sign out
-            </button>
+            <form method="post" action="/api/account/signout">
+              <input type="hidden" name="callbackUrl" value={signOutCallbackUrl} />
+              <button type="submit" className="min-h-11 text-left text-base font-medium text-slate-900">
+                Sign out
+              </button>
+            </form>
           ) : (
             <Link href="/signin" className="flex min-h-11 items-center text-base font-medium text-slate-900">
               Sign in

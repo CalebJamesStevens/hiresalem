@@ -1,8 +1,4 @@
 import Link from "next/link"
-import { AuthError } from "next-auth"
-import { redirect } from "next/navigation"
-
-import { signIn } from "@/auth"
 
 type SignInPageProps = {
   searchParams: Promise<{
@@ -10,6 +6,8 @@ type SignInPageProps = {
     error?: string
   }>
 }
+
+export const dynamic = "force-dynamic"
 
 function errorMessage(error: string | undefined) {
   if (!error) {
@@ -37,31 +35,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
 
       {message ? <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{message}</p> : null}
 
-      <form
-        action={async (formData) => {
-          "use server"
-
-          const email = String(formData.get("email") ?? "").trim().toLowerCase()
-          const password = String(formData.get("password") ?? "")
-          const redirectTo = String(formData.get("callbackUrl") ?? "/dashboard")
-
-          try {
-            await signIn("credentials", {
-              email,
-              password,
-              redirectTo
-            })
-          } catch (error) {
-            if (error instanceof AuthError) {
-              const encodedCallback = encodeURIComponent(redirectTo)
-              redirect(`/signin?error=credentials&callbackUrl=${encodedCallback}`)
-            }
-
-            throw error
-          }
-        }}
-        className="space-y-4"
-      >
+      <form method="post" action="/api/account/signin" className="space-y-4">
         <input type="hidden" name="callbackUrl" value={callbackUrl} />
 
         <div className="space-y-1">
