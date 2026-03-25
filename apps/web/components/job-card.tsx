@@ -62,7 +62,7 @@ export function JobCard({ job, initialSaved = false }: { job: PublicJobSearchRes
   return (
     <article
       className={`border p-5 shadow-sm ${
-        isFeatured ? "rounded-[2rem] border-indigo-200 bg-indigo-50/30 shadow-[0_12px_32px_-28px_rgba(37,99,235,0.45)]" : "rounded-2xl border-slate-200 bg-white"
+        isFeatured ? "rounded-[2rem] border-indigo-200 bg-white shadow-[0_12px_32px_-28px_rgba(37,99,235,0.45)]" : "rounded-2xl border-slate-200 bg-white"
       }`}
     >
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">

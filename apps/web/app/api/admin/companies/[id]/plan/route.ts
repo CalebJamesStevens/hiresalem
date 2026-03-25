@@ -37,7 +37,8 @@ async function readInput(request: Request) {
     payload: {
       plan: formData.get("plan"),
       planOverride: formData.get("planOverride"),
-      planOverrideReason: formData.get("planOverrideReason")
+      planOverrideReason: formData.get("planOverrideReason"),
+      isManaged: formData.get("isManaged")
     },
     returnTo: typeof formData.get("returnTo") === "string" ? String(formData.get("returnTo")) : null,
     prefersJson: false
@@ -84,7 +85,8 @@ export async function POST(request: Request, { params }: CompanyPlanRouteContext
       id: updated.id,
       plan: updated.plan,
       planOverride: updated.planOverride,
-      planOverrideReason: updated.planOverrideReason
+      planOverrideReason: updated.planOverrideReason,
+      isManaged: updated.isManaged
     })
   }
 

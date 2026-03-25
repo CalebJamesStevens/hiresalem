@@ -1,9 +1,11 @@
 import { notFound } from "next/navigation"
 
 import { JobsLandingPageView } from "@/components/jobs-landing-page"
+import { normalizeRoles } from "@/lib/authz"
 import { listTopEmployers, searchPublicJobs } from "@/lib/jobs"
 import { buildPageMetadata } from "@/lib/seo"
 import { allResourceArticleLinks, getJobsLandingPageBySlug, primaryLandingLinks } from "@/lib/seo-taxonomy"
+import { getSessionSafe } from "@/lib/session"
 
 const pageContent = getJobsLandingPageBySlug("salem")
 
@@ -23,7 +25,9 @@ export default async function SalemJobsLandingPage() {
     notFound()
   }
 
-  const [searchResult, topEmployers] = await Promise.all([searchPublicJobs(pageContent.searchParams), listTopEmployers(6)])
+  const [searchResult, topEmployers, session] = await Promise.all([searchPublicJobs(pageContent.searchParams), listTopEmployers(6), getSessionSafe()])
+  const roles = normalizeRoles(session?.user?.roles)
+  const showInlineEmployerPromo = !roles.includes("business") && !roles.includes("admin")
 
   return (
     <JobsLandingPageView
@@ -33,6 +37,7 @@ export default async function SalemJobsLandingPage() {
       featuredLinksTitle="Popular Salem job paths"
       featuredEmployers={topEmployers}
       resourceLinks={allResourceArticleLinks.slice(0, 3)}
+      showInlineEmployerPromo={showInlineEmployerPromo}
     />
   )
 }

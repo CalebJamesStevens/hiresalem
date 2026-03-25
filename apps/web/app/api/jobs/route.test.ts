@@ -12,6 +12,9 @@ const rateLimitMock = mock(() => ({ ok: true }))
 const requestKeyMock = mock(() => "request-key")
 const syncGoogleIndexingMock = mock(async () => ({ ok: true, skipped: false }))
 const countPublishedJobsForCompanyMock = mock(async () => 0)
+const countFeaturedPublishedJobsForCompanyMock = mock(async () => 0)
+const getAvailableExtraSlotCreditsMock = mock(async () => 0)
+const consumeExtraSlotCreditMock = mock(async () => null)
 
 const parsedJobInput = {
   title: "Operations Manager",
@@ -92,7 +95,14 @@ mock.module("@/lib/job-indexing", () => ({
 }))
 
 mock.module("@/lib/jobs", () => ({
-  countPublishedJobsForCompany: countPublishedJobsForCompanyMock
+  countPublishedJobsForCompany: countPublishedJobsForCompanyMock,
+  countFeaturedPublishedJobsForCompany: countFeaturedPublishedJobsForCompanyMock
+}))
+
+mock.module("@/lib/employer-add-ons", () => ({
+  getAvailableExtraSlotCredits: getAvailableExtraSlotCreditsMock,
+  consumeExtraSlotCredit: consumeExtraSlotCreditMock,
+  getActiveFeaturedAddOnCondition: () => false
 }))
 
 mock.module("@/lib/job-write", () => ({
@@ -104,6 +114,10 @@ mock.module("@/lib/job-write", () => ({
   getJobPublicationValidationReasons: publicationReasonsMock,
   getJobPublicationValidationMessage: publicationMessageMock,
   calculateJobExpiration: (startedAt: Date, listingDurationDays: number) => new Date(startedAt.getTime() + listingDurationDays * 24 * 60 * 60 * 1000),
+  getPlanListingDurationDays: (_listingDurationDays: number, plan?: { entitlements?: { jobExpiresAfterDays?: number | null } }) =>
+    plan?.entitlements?.jobExpiresAfterDays ?? 30,
+  getPlanJobExpiration: (_startedAt: Date, _listingDurationDays: number, plan?: { entitlements?: { jobExpiresAfterDays?: number | null } }) =>
+    plan?.entitlements?.jobExpiresAfterDays === null ? null : new Date("2026-04-11T18:00:00.000Z"),
   toJobSlug: toJobSlugMock
 }))
 
@@ -120,6 +134,9 @@ describe("POST /api/jobs", () => {
     requestKeyMock.mockClear()
     syncGoogleIndexingMock.mockClear()
     countPublishedJobsForCompanyMock.mockClear()
+    countFeaturedPublishedJobsForCompanyMock.mockClear()
+    getAvailableExtraSlotCreditsMock.mockClear()
+    consumeExtraSlotCreditMock.mockClear()
     jobWriteSchemaSafeParseMock.mockClear()
     resolveCompanyForJobMock.mockClear()
     buildJobWriteValuesMock.mockClear()
@@ -131,8 +148,8 @@ describe("POST /api/jobs", () => {
     insertReturningMock.mockClear()
   })
 
-  test("blocks publishing a fourth live free-plan job", async () => {
-    countPublishedJobsForCompanyMock.mockResolvedValueOnce(3)
+  test("blocks publishing a third live community-plan job", async () => {
+    countPublishedJobsForCompanyMock.mockResolvedValueOnce(2)
     const { POST } = await import("@/app/api/jobs/route")
 
     const response = await POST(
@@ -150,7 +167,8 @@ describe("POST /api/jobs", () => {
 
     expect(response.status).toBe(400)
     await expect(response.json()).resolves.toEqual({
-      error: "Free plan allows up to 3 live jobs. Close one live job before publishing another."
+      error:
+        "You've hit the Community Limit! You currently have 3 active listings. To post more, you can buy a one-time Extra Slot ($29) or upgrade to Standard ($149/mo) to get unlimited listings and a managed business profile."
     })
     expect(insertMock).not.toHaveBeenCalled()
   })
@@ -192,13 +210,13 @@ describe("POST /api/jobs", () => {
 
     expect(response.status).toBe(400)
     await expect(response.json()).resolves.toEqual({
-      error: "Featured placement is available on Featured Job or Business Pro."
+      error: "Spotlight placement is available on Standard or Partner."
     })
     expect(insertMock).not.toHaveBeenCalled()
   })
 
-  test("allows saving a draft even when the live-job limit is reached and forces the free duration", async () => {
-    countPublishedJobsForCompanyMock.mockResolvedValueOnce(3)
+  test("allows saving a draft even when the live-job limit is reached and forces the community duration", async () => {
+    countPublishedJobsForCompanyMock.mockResolvedValueOnce(2)
     const { POST } = await import("@/app/api/jobs/route")
 
     const response = await POST(

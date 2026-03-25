@@ -89,7 +89,8 @@ const companyPlanInputSchema = z.object({
     const trimmed = value.trim()
     return trimmed ? trimmed : undefined
   }, z.enum(companyPlanIds, { message: "invalid_company_plan" }).optional()),
-  planOverrideReason: optionalProfileTextField(COMPANY_PLAN_OVERRIDE_REASON_MAX_LENGTH, "plan_override_reason_length")
+  planOverrideReason: optionalProfileTextField(COMPANY_PLAN_OVERRIDE_REASON_MAX_LENGTH, "plan_override_reason_length"),
+  isManaged: z.preprocess((value) => value === true || value === "true" || value === "on", z.boolean().default(false))
 })
 
 export type CompanyProfileInput = {
@@ -357,7 +358,8 @@ export function parseCompanyPlanInput(input: unknown) {
     data: {
       plan: result.data.plan,
       planOverride: normalizedPlanOverride,
-      planOverrideReason: result.data.planOverrideReason ?? null
+      planOverrideReason: result.data.planOverrideReason ?? null,
+      isManaged: result.data.isManaged
     }
   }
 }
@@ -507,6 +509,7 @@ export async function updateCompanyPlanAssignment(input: {
   plan: CompanyPlanId
   planOverride: CompanyPlanId | null
   planOverrideReason: string | null
+  isManaged: boolean
 }) {
   const [updated] = await db
     .update(companies)
@@ -514,6 +517,7 @@ export async function updateCompanyPlanAssignment(input: {
       plan: input.plan,
       planOverride: input.planOverride,
       planOverrideReason: input.planOverrideReason,
+      isManaged: input.isManaged,
       planAssignedAt: new Date()
     })
     .where(eq(companies.id, input.id))

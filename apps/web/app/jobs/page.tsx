@@ -6,6 +6,7 @@ import { JobList } from "@/components/job-list"
 import { JobsSearchForm } from "@/components/jobs-search-form"
 import { LinkCardGrid } from "@/components/link-card-grid"
 import { SaveSearchPanel } from "@/components/save-search-panel"
+import { normalizeRoles } from "@/lib/authz"
 import { allJobsLandingLinks, allResourceArticleLinks, primaryLandingLinks } from "@/lib/seo-taxonomy"
 import { buildJobsSearchPath, getJobsSearchChips, hasActiveJobsSearchFilters, parseJobsSearchParams, type JobsSearchParams } from "@/lib/job-search"
 import { searchPublicJobs } from "@/lib/jobs"
@@ -57,6 +58,8 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
   const parsedSearchParams = parseJobsSearchParams(await searchParams)
   const session = await getSessionSafe()
   const userId = session?.user?.id
+  const roles = normalizeRoles(session?.user?.roles)
+  const shouldShowInlineEmployerPromo = !roles.includes("business") && !roles.includes("admin")
   const [searchResult, savedJobIds] = await Promise.all([
     searchPublicJobs(parsedSearchParams),
     userId ? listSavedJobIdsForUser(userId) : Promise.resolve([])
@@ -138,7 +141,16 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
           </div>
         ) : null}
 
-        {searchResult.results.length > 0 ? <JobList jobs={searchResult.results} savedJobIds={savedJobIds} inlinePromo={<InlineEmployerPromoCard />} /> : null}
+        {searchResult.results.length > 0 ? (
+          <JobList
+            jobs={searchResult.results}
+            savedJobIds={savedJobIds}
+            inlinePromo={shouldShowInlineEmployerPromo ? <InlineEmployerPromoCard /> : undefined}
+            showFeaturedSection
+            featuredSectionTitle="Featured Jobs"
+            recentSectionLabel="All Recent Openings"
+          />
+        ) : null}
 
         {searchResult.total > searchResult.pageSize ? (
           <nav className="flex flex-wrap items-center gap-2" aria-label="Pagination">

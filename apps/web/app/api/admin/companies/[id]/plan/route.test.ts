@@ -18,17 +18,19 @@ const getCompanyByIdMock = mock(async () => ({
 const parseCompanyPlanInputMock = mock(() => ({
   success: true as const,
   data: {
-    plan: "enhanced_profile" as const,
-    planOverride: "business_pro" as const,
-    planOverrideReason: "Chamber pilot"
+    plan: "standard" as const,
+    planOverride: "partner" as const,
+    planOverrideReason: "Partner pilot",
+    isManaged: true
   }
 }))
 
 const updateCompanyPlanAssignmentMock = mock(async () => ({
   id: "company-1",
-  plan: "enhanced_profile" as const,
-  planOverride: "business_pro" as const,
-  planOverrideReason: "Chamber pilot"
+  plan: "standard" as const,
+  planOverride: "partner" as const,
+  planOverrideReason: "Partner pilot",
+  isManaged: true
 }))
 
 mock.module("@/lib/api-auth", () => ({
@@ -64,7 +66,7 @@ describe("POST /api/admin/companies/[id]/plan", () => {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          plan: "enhanced_profile"
+          plan: "standard"
         })
       }),
       {
@@ -88,9 +90,10 @@ describe("POST /api/admin/companies/[id]/plan", () => {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          plan: "enhanced_profile",
-          planOverride: "business_pro",
-          planOverrideReason: "Chamber pilot"
+          plan: "standard",
+          planOverride: "partner",
+          planOverrideReason: "Partner pilot",
+          isManaged: true
         })
       }),
       {
@@ -104,15 +107,17 @@ describe("POST /api/admin/companies/[id]/plan", () => {
     expect(parseCompanyPlanInputMock).toHaveBeenCalledTimes(1)
     expect(updateCompanyPlanAssignmentMock).toHaveBeenCalledWith({
       id: "company-1",
-      plan: "enhanced_profile",
-      planOverride: "business_pro",
-      planOverrideReason: "Chamber pilot"
+      plan: "standard",
+      planOverride: "partner",
+      planOverrideReason: "Partner pilot",
+      isManaged: true
     })
     await expect(response.json()).resolves.toEqual({
       id: "company-1",
-      plan: "enhanced_profile",
-      planOverride: "business_pro",
-      planOverrideReason: "Chamber pilot"
+      plan: "standard",
+      planOverride: "partner",
+      planOverrideReason: "Partner pilot",
+      isManaged: true
     })
   })
 })

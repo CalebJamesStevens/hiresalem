@@ -6,7 +6,7 @@ const publishedJob = {
   slug: "salem-job",
   isActive: true,
   paymentStatus: "paid" as const,
-  expiresAt: new Date("2026-03-12T00:00:00.000Z")
+  expiresAt: null
 }
 
 describe("job indexing transitions", () => {

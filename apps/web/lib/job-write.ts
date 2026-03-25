@@ -3,6 +3,7 @@ import { z } from "zod"
 import { calculateJobListingPrice, JOB_LISTING_DEFAULT_DAYS, JOB_LISTING_MAX_DAYS, JOB_LISTING_MIN_DAYS } from "@/lib/job-listing-billing"
 import { createUniqueCompanySlug, getCompanyById, getCompanyByOwnerAuthId, getCompanyBySlug, toCompanySlug } from "@/lib/companies"
 import { db } from "@/lib/db"
+import type { ResolvedCompanyPlan } from "@repo/db/plans"
 import { companies } from "@repo/db/schema/companies"
 import { employmentTypeEnum, jobCategoryEnum, jobs, salaryIntervalEnum, workModeEnum } from "@repo/db/schema/jobs"
 
@@ -260,6 +261,27 @@ export function buildCheckoutDescription(title: string, companyName: string | nu
 
 export function calculateJobExpiration(startedAt: Date, listingDurationDays: number) {
   return new Date(startedAt.getTime() + listingDurationDays * 24 * 60 * 60 * 1000)
+}
+
+export function getPlanListingDurationDays(
+  requestedListingDurationDays: number,
+  plan?: Pick<ResolvedCompanyPlan, "entitlements"> | null
+) {
+  return plan?.entitlements.jobExpiresAfterDays ?? requestedListingDurationDays
+}
+
+export function getPlanJobExpiration(
+  startedAt: Date,
+  requestedListingDurationDays: number,
+  plan?: Pick<ResolvedCompanyPlan, "entitlements"> | null
+) {
+  const effectiveDurationDays = getPlanListingDurationDays(requestedListingDurationDays, plan)
+
+  if (plan?.entitlements.jobExpiresAfterDays === null) {
+    return null
+  }
+
+  return calculateJobExpiration(startedAt, effectiveDurationDays)
 }
 
 export { calculateJobListingPrice }

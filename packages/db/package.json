@@ -30,6 +30,7 @@
     "./schema/saved-searches": "./schema/saved-searches.ts",
     "./schema/company-claims": "./schema/company-claims.ts",
     "./schema/saved-jobs": "./schema/saved-jobs.ts",
-    "./schema/engagement-events": "./schema/engagement-events.ts"
+    "./schema/engagement-events": "./schema/engagement-events.ts",
+    "./schema/employer-add-ons": "./schema/employer-add-ons.ts"
   }
 }

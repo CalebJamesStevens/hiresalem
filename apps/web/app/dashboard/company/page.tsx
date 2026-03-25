@@ -72,15 +72,15 @@ function getErrorMessage(error?: string) {
   }
 
   if (error === "plan_locked_social_links") {
-    return "Social links are available on Enhanced Profile."
+    return "Social links are available on Standard or Partner."
   }
 
   if (error === "plan_locked_enhanced_company_profile") {
-    return "Expanded about, why work here, and benefits sections are available on Enhanced Profile."
+    return "Expanded about, why work here, and benefits sections are available on Standard or Partner."
   }
 
   if (error === "plan_locked_company_media") {
-    return "Cover images and gallery media are available on Enhanced Profile."
+    return "Cover images and gallery media are available on Standard or Partner."
   }
 
   if (error === "forbidden") {
@@ -132,7 +132,7 @@ export default async function DashboardCompanyPage({ searchParams }: DashboardCo
 
       {params.welcome === "1" ? (
         <p className="rounded border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-          Business setup is complete. Your Free plan profile is live and ready to edit.
+          Business setup is complete. Your Community plan profile is live and ready to edit.
         </p>
       ) : null}
 

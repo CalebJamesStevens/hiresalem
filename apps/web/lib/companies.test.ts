@@ -127,7 +127,7 @@ describe("parseCompanyProfileInputForPlan", () => {
         galleryImageUrl1: "https://example.com/gallery-1.jpg",
         galleryImageUrl2: ""
       },
-      resolveCompanyPlan({ plan: "enhanced_profile" })
+      resolveCompanyPlan({ plan: "standard" })
     )
 
     expect(parsed.success).toBe(true)
@@ -173,8 +173,8 @@ describe("canManageCompanyProfile", () => {
 describe("parseCompanyPlanInput", () => {
   test("normalizes matching overrides away and trims internal notes", () => {
     const parsed = parseCompanyPlanInput({
-      plan: "enhanced_profile",
-      planOverride: "enhanced_profile",
+      plan: "standard",
+      planOverride: "standard",
       planOverrideReason: "  Chamber pilot  "
     })
 
@@ -185,9 +185,10 @@ describe("parseCompanyPlanInput", () => {
     }
 
     expect(parsed.data).toEqual({
-      plan: "enhanced_profile",
+      plan: "standard",
       planOverride: null,
-      planOverrideReason: "Chamber pilot"
+      planOverrideReason: "Chamber pilot",
+      isManaged: false
     })
   })
 
@@ -250,7 +251,7 @@ describe("public company profile helpers", () => {
     expect(profile.usesEnhancedPresentation).toBe(false)
   })
 
-  test("returns enhanced sections for enhanced-profile companies", () => {
+  test("returns enhanced sections for standard companies", () => {
     const profile = getCompanyPublicProfileContent({
       shortDescription: "Local care team.",
       linkedinUrl: "https://linkedin.com/company/acme-health",
@@ -262,7 +263,7 @@ describe("public company profile helpers", () => {
       coverImageUrl: "https://example.com/cover.jpg",
       galleryImageUrl1: "https://example.com/1.jpg",
       galleryImageUrl2: "https://example.com/2.jpg",
-      plan: "enhanced_profile",
+      plan: "standard",
       planOverride: null
     })
 

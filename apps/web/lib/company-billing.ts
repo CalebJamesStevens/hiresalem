@@ -7,7 +7,7 @@ import { getStripe } from "@/lib/stripe"
 import { DEFAULT_COMPANY_PLAN_ID, getCompanyPlanLabel, type CompanyPlanId } from "@repo/db/plans"
 import { companies, companyBillingStatusEnum } from "@repo/db/schema/companies"
 
-export const billableCompanyPlanIds = ["enhanced_profile", "featured_job", "business_pro"] as const
+export const billableCompanyPlanIds = ["standard", "partner"] as const
 
 export type BillableCompanyPlanId = (typeof billableCompanyPlanIds)[number]
 export type CompanyBillingStatus = (typeof companyBillingStatusEnum.enumValues)[number]
@@ -20,23 +20,17 @@ type CompanyBillingDefinition = {
 }
 
 const COMPANY_BILLING_DEFINITIONS: Record<BillableCompanyPlanId, CompanyBillingDefinition> = {
-  enhanced_profile: {
-    id: "enhanced_profile",
-    description: "Richer business presence with social links, expanded story sections, benefits, and an enhanced public company page.",
-    features: ["Social links", "Expanded about section", "Why work here and benefits", "Cover image or limited gallery"],
-    stripePriceEnvVar: "STRIPE_ENHANCED_PROFILE_PRICE_ID"
+  standard: {
+    id: "standard",
+    description: "Unlimited live jobs, one Featured Spotlight slot, and an enhanced Salem-first employer profile.",
+    features: ["Unlimited active listings", "No expiry while subscribed", "Enhanced business profile", "1 featured Spotlight slot"],
+    stripePriceEnvVar: "STRIPE_STANDARD_PLAN_PRICE_ID"
   },
-  featured_job: {
-    id: "featured_job",
-    description: "Boost a job with stronger presentation and elevated placement on supported HireSalem listing surfaces.",
-    features: ["Featured job badge", "Boosted placement on approved job lists", "Longer job duration support"],
-    stripePriceEnvVar: "STRIPE_FEATURED_JOB_PRICE_ID"
-  },
-  business_pro: {
-    id: "business_pro",
-    description: "Bundle the richer company profile and featured visibility together, plus remove the 3-live-job cap.",
-    features: ["Everything in Enhanced Profile", "Featured job capability", "More than 3 active jobs"],
-    stripePriceEnvVar: "STRIPE_BUSINESS_PRO_PRICE_ID"
+  partner: {
+    id: "partner",
+    description: "Premium employer placement with every listing featured plus homepage Top Employer visibility.",
+    features: ["Unlimited active listings", "Enhanced business profile", "All listings featured", 'Homepage "Top Employer" slot'],
+    stripePriceEnvVar: "STRIPE_PARTNER_PLAN_PRICE_ID"
   }
 }
 
@@ -45,6 +39,7 @@ export type CompanyBillingFields = Pick<
   | "id"
   | "name"
   | "ownerAuthId"
+  | "isManaged"
   | "plan"
   | "planOverride"
   | "billingPlan"
@@ -142,7 +137,7 @@ export async function listCompanyPlanPricing(): Promise<CompanyPlanPricing[]> {
           ...definition,
           priceId,
           priceLabel: null,
-          isConfigured: false
+          isConfigured: Boolean(priceId)
         }
       }
 
@@ -160,7 +155,7 @@ export async function listCompanyPlanPricing(): Promise<CompanyPlanPricing[]> {
           ...definition,
           priceId,
           priceLabel: null,
-          isConfigured: false
+          isConfigured: true
         }
       }
     })
@@ -348,6 +343,10 @@ export function getBillingCheckoutErrorMessage(error?: string) {
 
   if (error === "subscription_required") {
     return "No active subscription was found for this business yet."
+  }
+
+  if (error === "confirm_required") {
+    return "Review the plan change details and confirm before updating your subscription."
   }
 
   return null

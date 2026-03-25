@@ -4,6 +4,7 @@ import { InlineEmployerPromoCard } from "@/components/inline-employer-promo-card
 import { JsonLd } from "@/components/json-ld"
 import { JobList } from "@/components/job-list"
 import { LinkCardGrid } from "@/components/link-card-grid"
+import { normalizeRoles } from "@/lib/authz"
 import { listLatestPublicJobs, listTopEmployers } from "@/lib/jobs"
 import { getSessionSafe } from "@/lib/session"
 import { allResourceArticleLinks, primaryLandingLinks } from "@/lib/seo-taxonomy"
@@ -24,6 +25,10 @@ export const metadata = buildPageMetadata({
 export default async function HomePage() {
   const [latestJobs, topEmployers, session] = await Promise.all([listLatestPublicJobs(6), listTopEmployers(6), getSessionSafe()])
   const userId = session?.user?.id
+  const roles = normalizeRoles(session?.user?.roles)
+  const shouldShowInlineEmployerPromo = !roles.includes("business") && !roles.includes("admin")
+  const featuredTopEmployers = topEmployers.filter((company) => company.isTopEmployer)
+  const standardEmployers = topEmployers.filter((company) => !company.isTopEmployer)
 
   return (
     <>
@@ -108,7 +113,13 @@ export default async function HomePage() {
               Open the full jobs index
             </Link>
           </div>
-          <JobList jobs={latestJobs} inlinePromo={<InlineEmployerPromoCard />} />
+          <JobList
+            jobs={latestJobs}
+            inlinePromo={shouldShowInlineEmployerPromo ? <InlineEmployerPromoCard /> : undefined}
+            showFeaturedSection
+            featuredSectionTitle="Featured Jobs"
+            recentSectionLabel="All Recent Openings"
+          />
         </section>
 
         <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm md:p-8">
@@ -170,25 +181,70 @@ export default async function HomePage() {
             </Link>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {topEmployers.map((company) => (
-              <Link
-                key={company.id}
-                href={buildCompanyJobsPath(company.slug)}
-                className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-              >
+          {featuredTopEmployers.length > 0 ? (
+            <div className="space-y-4 rounded-[2rem] border border-[#B8D3F1] bg-[#F4F9FE] p-5 md:p-6">
+              <div className="max-w-2xl space-y-3">
+                <span className="inline-flex rounded-full border border-[#B8D3F1] bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[#236CB3]">
+                  Top Employers
+                </span>
                 <div className="space-y-2">
-                  <h3 className="text-lg font-semibold text-slate-900">{company.name}</h3>
-                  <p className="text-sm text-slate-600">
-                    {company.activeJobCount} active {company.activeJobCount === 1 ? "job" : "jobs"}
-                  </p>
+                  <h3 className="text-xl font-semibold text-slate-950 md:text-2xl">Featured partner employers</h3>
                   <p className="text-sm leading-6 text-slate-600">
-                    See live Salem-area openings from this employer and compare them with related local opportunities.
+                    Premium partners get dedicated homepage placement so job seekers can compare standout local employers separately from the broader
+                    hiring list.
                   </p>
                 </div>
-              </Link>
-            ))}
-          </div>
+              </div>
+              <div className="grid gap-4 lg:grid-cols-2">
+                {featuredTopEmployers.map((company) => (
+                  <Link
+                    key={company.id}
+                    href={buildCompanyJobsPath(company.slug)}
+                    className="rounded-[1.75rem] border border-[#8DBAE8] bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                  >
+                    <div className="space-y-3">
+                      <span className="inline-flex rounded-full bg-[#2C81D6] px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-white">
+                        Top Employer
+                      </span>
+                      <h3 className="text-2xl font-semibold text-slate-950">{company.name}</h3>
+                      <p className="text-sm font-medium text-slate-700">
+                        {company.activeJobCount} active {company.activeJobCount === 1 ? "job" : "jobs"}
+                      </p>
+                      {company.bio ? <p className="text-sm leading-6 text-slate-600">{company.bio}</p> : null}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {standardEmployers.length > 0 ? (
+            <div className="space-y-4 pt-2">
+              {featuredTopEmployers.length > 0 ? (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-950">More employers hiring now</h3>
+                  <p className="mt-1 text-sm text-slate-600">Browse the rest of the Salem-area employers with active openings.</p>
+                </div>
+              ) : null}
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {standardEmployers.map((company) => (
+                  <Link
+                    key={company.id}
+                    href={buildCompanyJobsPath(company.slug)}
+                    className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                  >
+                    <div className="space-y-2">
+                      <h3 className="text-lg font-semibold text-slate-900">{company.name}</h3>
+                      <p className="text-sm text-slate-600">
+                        {company.activeJobCount} active {company.activeJobCount === 1 ? "job" : "jobs"}
+                      </p>
+                      {company.bio ? <p className="text-sm leading-6 text-slate-600">{company.bio}</p> : null}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </section>
 
         <LinkCardGrid title="Local job seeker guides" items={allResourceArticleLinks} columns="md:grid-cols-2" />

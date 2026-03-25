@@ -256,7 +256,7 @@ export default async function JobPage({ params }: JobPageProps) {
 
       <section
         className={`min-w-0 overflow-hidden rounded-[2rem] border p-6 shadow-sm ${
-          job.isFeatured ? "border-indigo-200 bg-indigo-50/30 shadow-[0_12px_32px_-28px_rgba(37,99,235,0.45)]" : "border-slate-200 bg-white"
+          job.isFeatured ? "border-indigo-200 bg-white shadow-[0_12px_32px_-28px_rgba(37,99,235,0.45)]" : "border-slate-200 bg-white"
         }`}
       >
         <div className="min-w-0 space-y-4">

@@ -1,4 +1,5 @@
 import { syncCompanyBillingFromCheckoutSession, syncCompanyBillingFromStripeSubscription } from "@/lib/company-billing"
+import { markEmployerAddOnCanceledBySessionId, syncEmployerAddOnFromCheckoutSession } from "@/lib/employer-add-ons"
 import { activatePaidJobListing, markJobPaymentCanceledBySessionId } from "@/lib/job-billing"
 import { getStripe, getStripeWebhookSecret } from "@/lib/stripe"
 
@@ -33,7 +34,8 @@ export async function POST(req: Request) {
 
   if (event.type === "checkout.session.completed") {
     const session = event.data.object
-    const jobId = typeof session.client_reference_id === "string" ? session.client_reference_id : session.metadata?.jobId
+    const isEmployerAddOnCheckout = typeof session.metadata?.addOnType === "string"
+    const jobId = !isEmployerAddOnCheckout && (typeof session.client_reference_id === "string" ? session.client_reference_id : session.metadata?.jobId)
 
     if (jobId) {
       await activatePaidJobListing({
@@ -46,11 +48,16 @@ export async function POST(req: Request) {
     if (session.mode === "subscription") {
       await syncCompanyBillingFromCheckoutSession(session, stripe)
     }
+
+    if (session.mode === "payment") {
+      await syncEmployerAddOnFromCheckoutSession(session)
+    }
   }
 
   if (event.type === "checkout.session.expired" || event.type === "checkout.session.async_payment_failed") {
     const session = event.data.object
     await markJobPaymentCanceledBySessionId(session.id)
+    await markEmployerAddOnCanceledBySessionId(session.id)
   }
 
   if (event.type === "customer.subscription.created" || event.type === "customer.subscription.updated" || event.type === "customer.subscription.deleted") {

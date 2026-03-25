@@ -6,6 +6,7 @@ import { getBoostedNewestJobOrderBy, getBoostedRelevanceJobOrderBy, getFeaturedJ
 import type { JobsSearchParams } from "@/lib/job-search"
 import { JOBS_PAGE_SIZE, parseJobsSearchParams } from "@/lib/job-search"
 import { getPublishedJobsFilter } from "@/lib/job-listing-billing"
+import { snippet } from "@/lib/seo"
 import { companies } from "@repo/db/schema/companies"
 import { jobs } from "@repo/db/schema/jobs"
 
@@ -56,7 +57,9 @@ export type TopEmployer = {
   slug: string
   name: string
   website: string | null
+  bio: string | null
   activeJobCount: number
+  isTopEmployer: boolean
 }
 
 export type PublicJobSearchResponse = {
@@ -198,18 +201,18 @@ export async function searchPublicJobs(input: JobsSearchParams): Promise<PublicJ
 
   const orderBy =
     params.sort === "oldest"
-      ? [asc(jobs.createdAt)]
+      ? [asc(jobs.activatedAt), asc(jobs.createdAt)]
       : params.sort === "salary_high_to_low"
-        ? [asc(getSalaryKnownOrder()), desc(getSalarySortValue()), desc(jobs.createdAt)]
+        ? [asc(getSalaryKnownOrder()), desc(getSalarySortValue()), desc(jobs.activatedAt), desc(jobs.createdAt)]
         : params.sort === "salary_low_to_high"
-          ? [asc(getSalaryKnownOrder()), asc(getSalarySortValue()), desc(jobs.createdAt)]
+          ? [asc(getSalaryKnownOrder()), asc(getSalarySortValue()), desc(jobs.activatedAt), desc(jobs.createdAt)]
           : params.sort === "relevance" && params.q
             ? shouldBoostFeaturedJobs(params)
               ? getBoostedRelevanceJobOrderBy(relevance)
-              : [desc(relevance), desc(jobs.createdAt)]
+              : [desc(relevance), desc(jobs.activatedAt), desc(jobs.createdAt)]
             : shouldBoostFeaturedJobs(params)
               ? getBoostedNewestJobOrderBy()
-              : [desc(jobs.createdAt)]
+              : [desc(jobs.activatedAt), desc(jobs.createdAt)]
 
   const [countRows, results] = await Promise.all([
     db
@@ -262,20 +265,70 @@ export async function listLatestPublicJobs(limit = 6) {
 }
 
 export async function listTopEmployers(limit = 5): Promise<TopEmployer[]> {
-  return db
+  const topEmployerRank = sql<number>`case
+    when ${companies.plan} = 'partner' or ${companies.planOverride} = 'partner' then 1
+    else 0
+  end`
+
+  const results = await db
     .select({
       id: companies.id,
       slug: companies.slug,
       name: companies.name,
       website: companies.website,
-      activeJobCount: sql<number>`count(${jobs.id})::int`
+      shortDescription: companies.shortDescription,
+      linkedinUrl: companies.linkedinUrl,
+      facebookUrl: companies.facebookUrl,
+      instagramUrl: companies.instagramUrl,
+      aboutSection: companies.aboutSection,
+      whyWorkHere: companies.whyWorkHere,
+      benefits: companies.benefits,
+      coverImageUrl: companies.coverImageUrl,
+      galleryImageUrl1: companies.galleryImageUrl1,
+      galleryImageUrl2: companies.galleryImageUrl2,
+      plan: companies.plan,
+      planOverride: companies.planOverride,
+      activeJobCount: sql<number>`count(${jobs.id})::int`,
+      isTopEmployer: sql<boolean>`case when ${topEmployerRank} = 1 then true else false end`
     })
     .from(companies)
     .innerJoin(jobs, eq(companies.id, jobs.companyId))
     .where(getPublishedJobsFilter())
-    .groupBy(companies.id)
-    .orderBy(desc(sql<number>`count(${jobs.id})::int`), asc(companies.name))
+    .groupBy(
+      companies.id,
+      companies.slug,
+      companies.name,
+      companies.website,
+      companies.shortDescription,
+      companies.linkedinUrl,
+      companies.facebookUrl,
+      companies.instagramUrl,
+      companies.aboutSection,
+      companies.whyWorkHere,
+      companies.benefits,
+      companies.coverImageUrl,
+      companies.galleryImageUrl1,
+      companies.galleryImageUrl2,
+      companies.plan,
+      companies.planOverride
+    )
+    .orderBy(desc(topEmployerRank), desc(sql<number>`count(${jobs.id})::int`), asc(companies.name))
     .limit(limit)
+
+  return results.map((company) => {
+    const publicProfile = getCompanyPublicProfileContent(company)
+    const bioSource = publicProfile.shortDescription ?? publicProfile.aboutSection
+
+    return {
+      id: company.id,
+      slug: company.slug,
+      name: company.name,
+      website: company.website,
+      bio: bioSource ? snippet(bioSource, "", 170) : null,
+      activeJobCount: company.activeJobCount,
+      isTopEmployer: company.isTopEmployer
+    }
+  })
 }
 
 export async function listPublicJobsForSitemap() {
@@ -383,6 +436,31 @@ export async function countPublishedJobsForCompany(companyId: string, input?: { 
   const now = input?.now ?? new Date()
   const predicates = [
     eq(jobs.companyId, companyId),
+    eq(jobs.isActive, true),
+    eq(jobs.paymentStatus, "paid"),
+    or(isNull(jobs.expiresAt), gt(jobs.expiresAt, now))
+  ]
+
+  if (input?.excludeJobId) {
+    predicates.push(ne(jobs.id, input.excludeJobId))
+  }
+
+  const [row] = await db
+    .select({
+      count: sql<number>`count(*)::int`
+    })
+    .from(jobs)
+    .where(and(...predicates))
+
+  return row?.count ?? 0
+}
+
+export async function countFeaturedPublishedJobsForCompany(companyId: string, input?: { excludeJobId?: string | null; now?: Date }) {
+  const now = input?.now ?? new Date()
+  const predicates = [
+    eq(jobs.companyId, companyId),
+    eq(jobs.isFeatured, true),
+    or(isNull(jobs.featuredExpiresAt), gt(jobs.featuredExpiresAt, now)),
     eq(jobs.isActive, true),
     eq(jobs.paymentStatus, "paid"),
     or(isNull(jobs.expiresAt), gt(jobs.expiresAt, now))

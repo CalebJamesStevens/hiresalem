@@ -1,12 +1,14 @@
 import { desc, eq } from "drizzle-orm"
 import { hasRole, normalizeRoles } from "@/lib/authz"
-import { getPublishedJobsFilter, JOB_LISTING_DEFAULT_DAYS } from "@/lib/job-listing-billing"
+import { consumeExtraSlotCredit, getAvailableExtraSlotCredits } from "@/lib/employer-add-ons"
+import { getCommunityLimitErrorMessage } from "@/lib/employer-pricing"
+import { getPublishedJobsFilter } from "@/lib/job-listing-billing"
 import { getSessionSafe } from "@/lib/session"
 import { requireApiRoles } from "@/lib/api-auth"
 import { db } from "@/lib/db"
-import { FEATURED_JOB_PLAN_MESSAGE, getNextFeaturedAt, validateFeaturedJobRequest } from "@/lib/featured-jobs"
+import { FEATURED_JOB_PLAN_MESSAGE, FEATURED_JOB_SLOT_MESSAGE, featuresAllJobs, getNextFeaturedAt, validateFeaturedJobRequest } from "@/lib/featured-jobs"
 import { syncGoogleIndexingForJobTransition } from "@/lib/job-indexing"
-import { countPublishedJobsForCompany } from "@/lib/jobs"
+import { countFeaturedPublishedJobsForCompany, countPublishedJobsForCompany } from "@/lib/jobs"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { getRequestKey } from "@/lib/request"
 import {
@@ -14,6 +16,8 @@ import {
   calculateJobExpiration,
   getJobPublicationValidationMessage,
   getJobPublicationValidationReasons,
+  getPlanJobExpiration,
+  getPlanListingDurationDays,
   jobWriteSchema,
   resolveCompanyForJob,
   toJobSlug
@@ -74,16 +78,25 @@ export async function POST(req: Request) {
 
   const now = new Date()
   const companyPlan = !isAdmin && companyForJob ? resolveCompanyPlan(companyForJob) : null
-  const featuredJobValidation = isAdmin ? { ok: true as const } : validateFeaturedJobRequest(parsed.data.isFeatured, companyPlan)
+  const requestedIsFeatured = !isAdmin && featuresAllJobs(companyPlan) ? true : parsed.data.isFeatured
+  const shouldPublishNow = isAdmin || submissionAction === "publish"
+  const currentFeaturedJobCount = !isAdmin && shouldPublishNow && companyForJob ? await countFeaturedPublishedJobsForCompany(companyForJob.id) : undefined
+  const featuredJobValidation = isAdmin
+    ? { ok: true as const, isFeatured: requestedIsFeatured }
+    : validateFeaturedJobRequest(requestedIsFeatured, companyPlan, {
+        currentFeaturedJobCount
+      })
 
   if (!featuredJobValidation.ok) {
-    return Response.json({ error: FEATURED_JOB_PLAN_MESSAGE }, { status: 400 })
+    return Response.json({ error: featuredJobValidation.error === "featured_job_slot_limit_reached" ? FEATURED_JOB_SLOT_MESSAGE : FEATURED_JOB_PLAN_MESSAGE }, { status: 400 })
   }
 
-  const listingDurationDays =
-    !isAdmin && companyPlan && !companyPlan.entitlements.allowsLongerJobDuration ? JOB_LISTING_DEFAULT_DAYS : parsed.data.listingDurationDays
-  const jobValues = buildJobWriteValues(parsed.data, companyForJob?.id ?? null)
-  const shouldPublishNow = isAdmin || submissionAction === "publish"
+  const listingDurationDays = isAdmin ? parsed.data.listingDurationDays : getPlanListingDurationDays(parsed.data.listingDurationDays, companyPlan)
+  const jobValues = {
+    ...buildJobWriteValues(parsed.data, companyForJob?.id ?? null),
+    isFeatured: featuredJobValidation.isFeatured
+  }
+  let shouldConsumeExtraSlot = false
   const publicationValidationReasons = shouldPublishNow ? getJobPublicationValidationReasons(jobValues) : []
   const publicationValidationMessage = shouldPublishNow ? getJobPublicationValidationMessage(publicationValidationReasons) : null
 
@@ -122,17 +135,19 @@ export async function POST(req: Request) {
     const activeJobCount = await countPublishedJobsForCompany(companyForJob.id)
     const maxActiveJobs = companyPlan.entitlements.maxActiveJobs
     const nextActiveJobCount = activeJobCount + 1
+    const availableExtraSlotCredits = maxActiveJobs !== null ? await getAvailableExtraSlotCredits(companyForJob.id) : 0
 
-    if (!isWithinCompanyActiveJobLimit(nextActiveJobCount, companyPlan.effectivePlanId)) {
+    if (!isWithinCompanyActiveJobLimit(nextActiveJobCount, companyPlan.effectivePlanId) && availableExtraSlotCredits <= 0) {
       return Response.json(
         {
-          error:
-            maxActiveJobs === null
-              ? "This plan cannot publish another live job right now."
-              : `Free plan allows up to ${maxActiveJobs} live jobs. Close one live job before publishing another.`
+          error: maxActiveJobs === null ? "This plan cannot publish another live job right now." : getCommunityLimitErrorMessage(nextActiveJobCount)
         },
         { status: 400 }
       )
+    }
+
+    if (maxActiveJobs !== null && nextActiveJobCount > maxActiveJobs && availableExtraSlotCredits > 0) {
+      shouldConsumeExtraSlot = true
     }
   }
 
@@ -150,9 +165,17 @@ export async function POST(req: Request) {
       listingDurationDays,
       paymentStatus: "paid",
       activatedAt: shouldPublishNow ? now : null,
-      expiresAt: shouldPublishNow ? calculateJobExpiration(now, listingDurationDays) : null
+      expiresAt: shouldPublishNow ? getPlanJobExpiration(now, listingDurationDays, companyPlan) : null
     })
     .returning()
+
+  if (shouldConsumeExtraSlot && created?.companyId) {
+    await consumeExtraSlotCredit({
+      companyId: created.companyId,
+      jobId: created.id,
+      now
+    })
+  }
 
   if (shouldPublishNow) {
     await syncGoogleIndexingForJobTransition({

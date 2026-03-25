@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, mock, test } from "bun:test"
 const constructEventMock = mock()
 const syncCompanyBillingFromCheckoutSessionMock = mock(async () => null)
 const syncCompanyBillingFromStripeSubscriptionMock = mock(async () => null)
+const syncEmployerAddOnFromCheckoutSessionMock = mock(async () => null)
+const markEmployerAddOnCanceledBySessionIdMock = mock(async () => null)
 const activatePaidJobListingMock = mock(async () => null)
 const markJobPaymentCanceledBySessionIdMock = mock(async () => null)
 
@@ -20,6 +22,11 @@ mock.module("@/lib/company-billing", () => ({
   syncCompanyBillingFromStripeSubscription: syncCompanyBillingFromStripeSubscriptionMock
 }))
 
+mock.module("@/lib/employer-add-ons", () => ({
+  syncEmployerAddOnFromCheckoutSession: syncEmployerAddOnFromCheckoutSessionMock,
+  markEmployerAddOnCanceledBySessionId: markEmployerAddOnCanceledBySessionIdMock
+}))
+
 mock.module("@/lib/job-billing", () => ({
   activatePaidJobListing: activatePaidJobListingMock,
   markJobPaymentCanceledBySessionId: markJobPaymentCanceledBySessionIdMock
@@ -30,6 +37,8 @@ describe("POST /api/stripe/webhooks", () => {
     constructEventMock.mockClear()
     syncCompanyBillingFromCheckoutSessionMock.mockClear()
     syncCompanyBillingFromStripeSubscriptionMock.mockClear()
+    syncEmployerAddOnFromCheckoutSessionMock.mockClear()
+    markEmployerAddOnCanceledBySessionIdMock.mockClear()
     activatePaidJobListingMock.mockClear()
     markJobPaymentCanceledBySessionIdMock.mockClear()
   })
@@ -43,7 +52,7 @@ describe("POST /api/stripe/webhooks", () => {
           mode: "subscription",
           metadata: {
             companyId: "company-1",
-            planId: "business_pro"
+            planId: "partner"
           }
         }
       }
@@ -75,7 +84,7 @@ describe("POST /api/stripe/webhooks", () => {
           status: "active",
           metadata: {
             companyId: "company-1",
-            planId: "enhanced_profile"
+            planId: "standard"
           },
           items: {
             data: []
@@ -97,5 +106,62 @@ describe("POST /api/stripe/webhooks", () => {
 
     expect(response.status).toBe(200)
     expect(syncCompanyBillingFromStripeSubscriptionMock).toHaveBeenCalledTimes(1)
+  })
+
+  test("syncs employer add-on payments without activating paid job listings", async () => {
+    constructEventMock.mockReturnValueOnce({
+      type: "checkout.session.completed",
+      data: {
+        object: {
+          id: "cs_addon_123",
+          mode: "payment",
+          metadata: {
+            addOnType: "weekly_feature",
+            jobId: "job-1"
+          }
+        }
+      }
+    })
+    const { POST } = await import("@/app/api/stripe/webhooks/route")
+
+    const response = await POST(
+      new Request("http://localhost:3000/api/stripe/webhooks", {
+        method: "POST",
+        headers: {
+          "stripe-signature": "sig_test"
+        },
+        body: "{}"
+      })
+    )
+
+    expect(response.status).toBe(200)
+    expect(syncEmployerAddOnFromCheckoutSessionMock).toHaveBeenCalledTimes(1)
+    expect(activatePaidJobListingMock).not.toHaveBeenCalled()
+  })
+
+  test("marks expired checkout sessions as canceled for both job payments and add-ons", async () => {
+    constructEventMock.mockReturnValueOnce({
+      type: "checkout.session.expired",
+      data: {
+        object: {
+          id: "cs_expired_123"
+        }
+      }
+    })
+    const { POST } = await import("@/app/api/stripe/webhooks/route")
+
+    const response = await POST(
+      new Request("http://localhost:3000/api/stripe/webhooks", {
+        method: "POST",
+        headers: {
+          "stripe-signature": "sig_test"
+        },
+        body: "{}"
+      })
+    )
+
+    expect(response.status).toBe(200)
+    expect(markJobPaymentCanceledBySessionIdMock).toHaveBeenCalledWith("cs_expired_123")
+    expect(markEmployerAddOnCanceledBySessionIdMock).toHaveBeenCalledWith("cs_expired_123")
   })
 })

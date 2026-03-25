@@ -47,6 +47,7 @@ export const jobs = pgTable("jobs", {
   applyUrl: text("apply_url"),
   isFeatured: boolean("is_featured").default(false).notNull(),
   featuredAt: timestamp("featured_at"),
+  featuredExpiresAt: timestamp("featured_expires_at"),
   isActive: boolean("is_active").default(true).notNull(),
   listingDurationDays: integer("listing_duration_days").default(30).notNull(),
   paymentStatus: jobPaymentStatusEnum("payment_status").default("paid").notNull(),

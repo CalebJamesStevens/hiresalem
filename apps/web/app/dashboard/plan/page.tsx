@@ -1,6 +1,8 @@
 import { EmployerBillingCard } from "@/components/employer-billing-card"
 import { EmployerPlanSummaryCard } from "@/components/employer-plan-summary-card"
 import { getBillingCheckoutErrorMessage, listCompanyPlanPricing, syncCompanyBillingFromCheckoutSessionId } from "@/lib/company-billing"
+import { getEmployerAddOnCheckoutErrorMessage, syncEmployerAddOnFromCheckoutSessionId } from "@/lib/employer-add-ons"
+import { getEmployerSelfServePlan } from "@/lib/employer-self-serve"
 import { getCompanyById, getCompanyByOwnerAuthId, listCompanies } from "@/lib/companies"
 import { hasRole } from "@/lib/authz"
 import { requirePageRoles } from "@/lib/page-auth"
@@ -14,6 +16,10 @@ type DashboardPlanPageProps = {
     billing?: string
     billingError?: string
     session_id?: string
+    addOn?: string
+    addOnError?: string
+    selectedPlan?: string
+    onboarding?: string
   }>
 }
 
@@ -21,12 +27,13 @@ export const dynamic = "force-dynamic"
 
 export default async function DashboardPlanPage({ searchParams }: DashboardPlanPageProps) {
   const params = await searchParams
+  const selectedPlan = params.selectedPlan ? getEmployerSelfServePlan(params.selectedPlan) : null
   const user = await requirePageRoles(["business", "admin"], "/dashboard/plan")
   const isAdmin = hasRole(user.roles, "admin")
   const [ownedCompany, companyOptions] = await Promise.all([getCompanyByOwnerAuthId(user.id), isAdmin ? listCompanies() : Promise.resolve([])])
 
   if (!isAdmin && !ownedCompany) {
-    redirect("/become-business")
+    redirect(`/become-business?plan=${selectedPlan ?? "free"}`)
   }
 
   const selectedCompanyId = isAdmin ? params.companyId?.trim() || ownedCompany?.id || companyOptions[0]?.id || null : ownedCompany?.id ?? null
@@ -39,18 +46,28 @@ export default async function DashboardPlanPage({ searchParams }: DashboardPlanP
     }
   }
 
+  if (!isAdmin && params.addOn === "success" && params.session_id) {
+    try {
+      await syncEmployerAddOnFromCheckoutSessionId(params.session_id)
+    } catch {
+      // Webhook is still the source of truth; this is only a best-effort UX sync.
+    }
+  }
+
   const [company, pricing] = await Promise.all([selectedCompanyId ? getCompanyById(selectedCompanyId) : Promise.resolve(null), listCompanyPlanPricing()])
   const resolvedPlan = company ? resolveCompanyPlan(company) : null
   const billingErrorMessage = getBillingCheckoutErrorMessage(params.billingError)
+  const addOnErrorMessage = getEmployerAddOnCheckoutErrorMessage(params.addOnError)
   const checkoutCompleted = params.checkout === "success"
   const checkoutCanceled = params.checkout === "canceled"
   const billingReturned = params.billing === "returned"
+  const billingUpdated = params.billing === "updated"
 
   return (
     <section className="space-y-6">
       <div className="space-y-2">
         <h1 className="text-2xl font-bold">Plan and upgrades</h1>
-        <p className="text-slate-600">Review your current plan, compare paid options, and manage subscription billing for your business account.</p>
+        <p className="text-slate-600">Review Community, Standard, and Partner pricing, then manage subscription billing for your business account.</p>
       </div>
 
       {checkoutCompleted ? (
@@ -68,8 +85,27 @@ export default async function DashboardPlanPage({ searchParams }: DashboardPlanP
           Returned from the billing portal. Subscription updates usually appear here within a few seconds of Stripe sending the webhook.
         </p>
       ) : null}
+      {billingUpdated ? (
+        <p className="rounded border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          Subscription updated. Your plan and billing details have been refreshed from Stripe.
+        </p>
+      ) : null}
 
       {billingErrorMessage ? <p className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{billingErrorMessage}</p> : null}
+      {params.onboarding === "1" && selectedPlan && selectedPlan !== "free" ? (
+        <p className="rounded border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          Business setup is complete. Continue below to start your {selectedPlan === "standard" ? "Standard" : "Partner"} subscription.
+        </p>
+      ) : null}
+      {params.addOn === "success" ? (
+        <p className="rounded border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          Add-on checkout completed. Your billing and job state should update as soon as Stripe confirms the payment.
+        </p>
+      ) : null}
+      {params.addOn === "canceled" ? (
+        <p className="rounded border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">Add-on checkout was canceled.</p>
+      ) : null}
+      {addOnErrorMessage ? <p className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{addOnErrorMessage}</p> : null}
 
       {isAdmin ? (
         <form action="/dashboard/plan" className="rounded-2xl border bg-white p-4 shadow-sm">
@@ -96,7 +132,13 @@ export default async function DashboardPlanPage({ searchParams }: DashboardPlanP
       ) : (
         <div className="space-y-6">
           <EmployerPlanSummaryCard plan={resolvedPlan} />
-          <EmployerBillingCard company={company} plan={resolvedPlan} pricing={pricing} isAdmin={isAdmin} />
+          <EmployerBillingCard
+            company={company}
+            plan={resolvedPlan}
+            pricing={pricing}
+            isAdmin={isAdmin}
+            selectedPlanId={selectedPlan ?? undefined}
+          />
         </div>
       )}
     </section>

@@ -30,7 +30,8 @@ export function JobsLandingPageView({
   featuredLinks = [],
   featuredLinksTitle = "Keep exploring local pages",
   featuredEmployers = [],
-  resourceLinks = []
+  resourceLinks = [],
+  showInlineEmployerPromo = true
 }: {
   page: JobsLandingPage
   searchResult: PublicJobSearchResponse
@@ -38,6 +39,7 @@ export function JobsLandingPageView({
   featuredLinksTitle?: string
   featuredEmployers?: TopEmployer[]
   resourceLinks?: LinkCard[]
+  showInlineEmployerPromo?: boolean
 }) {
   const breadcrumbs = [
     { name: "Home", href: "/" },
@@ -120,7 +122,13 @@ export function JobsLandingPageView({
         </div>
 
         {searchResult.results.length > 0 ? (
-          <JobList jobs={searchResult.results} inlinePromo={<InlineEmployerPromoCard />} />
+          <JobList
+            jobs={searchResult.results}
+            inlinePromo={showInlineEmployerPromo ? <InlineEmployerPromoCard /> : undefined}
+            showFeaturedSection
+            featuredSectionTitle="Featured Jobs"
+            recentSectionLabel="All Recent Openings"
+          />
         ) : (
           <div className="rounded-[2rem] border border-dashed border-slate-300 bg-white p-8 text-center">
             <h3 className="text-xl font-semibold text-slate-900">No fresh matches right now</h3>
@@ -153,13 +161,16 @@ export function JobsLandingPageView({
                 className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
               >
                 <div className="space-y-2">
+                  {company.isTopEmployer ? (
+                    <span className="inline-flex rounded-full border border-[#B8D3F1] bg-[#EAF3FD] px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[#236CB3]">
+                      Top Employer
+                    </span>
+                  ) : null}
                   <h3 className="text-lg font-semibold text-slate-900">{company.name}</h3>
                   <p className="text-sm text-slate-600">
                     {company.activeJobCount} active {company.activeJobCount === 1 ? "job" : "jobs"}
                   </p>
-                  <p className="text-sm leading-6 text-slate-600">
-                    Browse current openings from this employer and compare them with related Salem hiring paths.
-                  </p>
+                  {company.bio ? <p className="text-sm leading-6 text-slate-600">{company.bio}</p> : null}
                 </div>
               </Link>
             ))}

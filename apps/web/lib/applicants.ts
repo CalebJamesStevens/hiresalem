@@ -22,6 +22,7 @@ export type EmployerApplicantJob = {
   isActive: boolean
   paymentStatus: (typeof jobPaymentStatusEnum.enumValues)[number]
   activatedAt: Date | null
+  featuredExpiresAt: Date | null
   expiresAt: Date | null
   applicationCount: number
 }
@@ -136,6 +137,7 @@ export async function listEmployerApplicantJobs(viewer: EmployerViewer) {
       isActive: jobs.isActive,
       paymentStatus: jobs.paymentStatus,
       activatedAt: jobs.activatedAt,
+      featuredExpiresAt: jobs.featuredExpiresAt,
       expiresAt: jobs.expiresAt,
       applicationCount: countExpression
     })
@@ -147,10 +149,10 @@ export async function listEmployerApplicantJobs(viewer: EmployerViewer) {
       jobs.title,
       jobs.location,
       jobs.applyType,
-      jobs.isFeatured,
       jobs.isActive,
       jobs.paymentStatus,
       jobs.activatedAt,
+      jobs.featuredExpiresAt,
       jobs.expiresAt,
       jobs.createdAt
     )

@@ -26,7 +26,7 @@ const companyRows = [
     shortDescription: "Salem Design Co helps regional employers ship better digital products and customer experiences.",
     website: "https://example.com/salem-design",
     location: "Keizer, OR",
-    plan: "enhanced_profile" as const,
+    plan: "standard" as const,
     linkedinUrl: "https://linkedin.com/company/salem-design-co",
     instagramUrl: "https://instagram.com/salemdesignco",
     aboutSection:
@@ -49,8 +49,9 @@ const companyRows = [
     shortDescription: "Cherry City Staffing helps Salem employers fill operations, support, and skilled-trades roles quickly.",
     website: "https://example.com/cherry-city-staffing",
     location: "Salem, OR",
-    plan: "business_pro" as const,
-    planOverrideReason: "Pilot featured-job account for local testing"
+    plan: "partner" as const,
+    isManaged: true,
+    planOverrideReason: "Pilot partner account for local testing"
   }
 ] as const
 
@@ -163,7 +164,7 @@ const jobRows = [
     description: "Support payroll and monthly financial close operations.",
     applyType: "external" as const,
     applyUrl: "https://example.com/jobs/accounting-specialist",
-    isActive: true
+    isActive: false
   },
   {
     id: "aaaaaaa6-aaaa-aaaa-aaaa-aaaaaaaaaaa6",

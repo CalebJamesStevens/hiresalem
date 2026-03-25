@@ -9,6 +9,7 @@ import { Navbar } from "@/components/navbar"
 import { SiteBrand } from "@/components/site-brand"
 import { getGoatCounterEndpoint, getGoatCounterScriptSrc } from "@/lib/analytics"
 import { siteConfig } from "@/lib/seo"
+import { SUPPORT_EMAIL, SUPPORT_EMAIL_HREF } from "@/lib/support"
 import { buildOrganizationJsonLd, buildWebsiteJsonLd } from "@/lib/structured-data"
 import "../styles/globals.css"
 
@@ -83,7 +84,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Link href="/jobs/keizer">Keizer jobs</Link>
               <Link href="/employers">Employers</Link>
               <Link href="/resources">Resources</Link>
+              <a href={SUPPORT_EMAIL_HREF} className="hover:text-slate-700">
+                Support
+              </a>
             </div>
+            <a href={SUPPORT_EMAIL_HREF} className="text-slate-600 hover:text-slate-900">
+              {SUPPORT_EMAIL}
+            </a>
           </div>
         </footer>
         {goatCounterSite ? (

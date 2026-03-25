@@ -1,9 +1,11 @@
 import { notFound } from "next/navigation"
 
 import { JobsLandingPageView } from "@/components/jobs-landing-page"
+import { normalizeRoles } from "@/lib/authz"
 import { searchPublicJobs } from "@/lib/jobs"
 import { buildPageMetadata } from "@/lib/seo"
 import { getJobsLandingPageBySlug } from "@/lib/seo-taxonomy"
+import { getSessionSafe } from "@/lib/session"
 
 const pageContent = getJobsLandingPageBySlug("keizer")
 
@@ -23,7 +25,9 @@ export default async function KeizerJobsLandingPage() {
     notFound()
   }
 
-  const searchResult = await searchPublicJobs(pageContent.searchParams)
+  const [searchResult, session] = await Promise.all([searchPublicJobs(pageContent.searchParams), getSessionSafe()])
+  const roles = normalizeRoles(session?.user?.roles)
+  const showInlineEmployerPromo = !roles.includes("business") && !roles.includes("admin")
 
-  return <JobsLandingPageView page={pageContent} searchResult={searchResult} />
+  return <JobsLandingPageView page={pageContent} searchResult={searchResult} showInlineEmployerPromo={showInlineEmployerPromo} />
 }

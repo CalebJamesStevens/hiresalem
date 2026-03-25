@@ -2,6 +2,7 @@ import Link from "next/link"
 
 import { hasAnyRole, normalizeRoles } from "@/lib/authz"
 import { getSessionSafe } from "@/lib/session"
+import { SUPPORT_EMAIL, SUPPORT_EMAIL_HREF } from "@/lib/support"
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await getSessionSafe()
@@ -58,7 +59,17 @@ export default async function DashboardLayout({ children }: { children: React.Re
             Become a Business
           </Link>
         ) : null}
+        <a href={SUPPORT_EMAIL_HREF} className="rounded border bg-white px-3 py-2 text-slate-700 hover:text-slate-900">
+          Support
+        </a>
       </nav>
+      <p className="text-sm text-slate-600">
+        Need help with billing, profile setup, or job visibility?{" "}
+        <a href={SUPPORT_EMAIL_HREF} className="font-medium text-slate-900 underline underline-offset-4">
+          Email {SUPPORT_EMAIL}
+        </a>
+        .
+      </p>
       {children}
     </div>
   )

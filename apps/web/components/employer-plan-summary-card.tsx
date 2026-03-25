@@ -45,7 +45,7 @@ export function EmployerPlanSummaryCard({
         <div>
           <h3 className="text-sm font-semibold text-slate-900">Upgrade-only capabilities</h3>
           {upgradeHighlights.length === 0 ? (
-            <p className="mt-3 text-sm text-slate-600">All current pilot capabilities are already included on this plan.</p>
+            <p className="mt-3 text-sm text-slate-600">All current employer capabilities are already included on this plan.</p>
           ) : (
             <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-slate-700">
               {upgradeHighlights.map((item) => (

@@ -25,9 +25,9 @@ export function InlineEmployerPromoCard() {
         <div className="rounded-[1.5rem] bg-white/10 p-4">
           <h3 className="text-base font-semibold">Employer basics</h3>
           <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-200">
-            <li>Free setup includes a public company profile and up to 3 live jobs.</li>
-            <li>Listings feed into Salem and category-specific hiring paths.</li>
-            <li>Stronger profile and visibility options are available when needed.</li>
+            <li>Community starts free with a public company profile and up to 2 active jobs.</li>
+            <li>Standard adds unlimited listings, no expiry, and one Featured Spotlight slot.</li>
+            <li>Partner features every listing and unlocks homepage Top Employer placement.</li>
           </ul>
         </div>
       </div>

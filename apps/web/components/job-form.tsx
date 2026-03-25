@@ -129,7 +129,6 @@ function buildPreviewState(formData: FormData, existingCompanies: ExistingCompan
 
 export function JobForm({
   disabled = false,
-  requiresPayment = true,
   isAdmin = false,
   existingCompanies = [],
   initialValues = null,
@@ -137,16 +136,19 @@ export function JobForm({
   canSaveDraft = false,
   canPublish = true,
   publishDisabledMessage = null,
-  fixedListingDurationDays = null,
+  listingExpiresAfterDays = JOB_LISTING_DEFAULT_DAYS,
   activeJobsCount = 0,
   activeJobsLimit = null,
   planLabel = null,
   initialStatus = null,
   canFeatureJob = false,
-  featuredPlacementEligible = false
+  featuredPlacementEligible = false,
+  featuredJobsCount = 0,
+  featuredJobsLimit = null,
+  allListingsFeatured = false,
+  featuredSlotLockedMessage = null
 }: {
   disabled?: boolean
-  requiresPayment?: boolean
   isAdmin?: boolean
   existingCompanies?: ExistingCompany[]
   initialValues?: JobFormInitialValues | null
@@ -154,13 +156,17 @@ export function JobForm({
   canSaveDraft?: boolean
   canPublish?: boolean
   publishDisabledMessage?: string | null
-  fixedListingDurationDays?: number | null
+  listingExpiresAfterDays?: number | null
   activeJobsCount?: number
   activeJobsLimit?: number | null
   planLabel?: string | null
   initialStatus?: EmployerJobLifecycleStatus | null
   canFeatureJob?: boolean
   featuredPlacementEligible?: boolean
+  featuredJobsCount?: number
+  featuredJobsLimit?: number | null
+  allListingsFeatured?: boolean
+  featuredSlotLockedMessage?: string | null
 }) {
   const router = useRouter()
   const formRef = useRef<HTMLFormElement>(null)
@@ -171,10 +177,11 @@ export function JobForm({
   const [applyType, setApplyType] = useState<ApplyType>(initialValues?.applyType ?? "onsite")
   const [workMode, setWorkMode] = useState<"" | "onsite" | "hybrid" | "remote">(initialValues?.workMode ?? "")
   const [companySelection, setCompanySelection] = useState<CompanySelection>(isAdmin ? (initialValues?.companyId ?? "") : "")
-  const [listingDurationDays, setListingDurationDays] = useState(fixedListingDurationDays ?? initialValues?.listingDurationDays ?? JOB_LISTING_DEFAULT_DAYS)
+  const [listingDurationDays, setListingDurationDays] = useState(initialValues?.listingDurationDays ?? JOB_LISTING_DEFAULT_DAYS)
   const [isPending, startTransition] = useTransition()
-  const effectiveListingDurationDays = fixedListingDurationDays ?? listingDurationDays
+  const effectiveListingDurationDays = listingExpiresAfterDays ?? initialValues?.listingDurationDays ?? listingDurationDays
   const showsDraftControls = canSaveDraft && (!isEditing || initialStatus === "draft")
+  const featuredSelectionDisabled = Boolean(featuredSlotLockedMessage) && !allListingsFeatured && !initialValues?.isFeatured
 
   function onPreview() {
     if (!formRef.current || disabled) {
@@ -318,6 +325,22 @@ export function JobForm({
             {activeJobsLimit !== null ? (
               <p className="mt-1">
                 Live jobs: {activeJobsCount} / {activeJobsLimit}
+              </p>
+            ) : null}
+            <p className="mt-1">
+              Listings:{" "}
+              <span className="font-medium text-slate-900">
+                {listingExpiresAfterDays === null ? "No expiry while subscribed" : `${listingExpiresAfterDays}-day expiry`}
+              </span>
+            </p>
+            {allListingsFeatured ? (
+              <p className="mt-1">Every Partner listing publishes with Featured Spotlight placement automatically.</p>
+            ) : featuredPlacementEligible && featuredJobsLimit !== null ? (
+              <p className="mt-1">
+                Spotlight slots:{" "}
+                <span className="font-medium text-slate-900">
+                  {featuredJobsCount} / {featuredJobsLimit}
+                </span>
               </p>
             ) : null}
           </div>
@@ -560,45 +583,73 @@ export function JobForm({
           <p className="text-xs text-slate-500">Markdown is supported for job descriptions.</p>
         </div>
 
-        <div className="space-y-1">
-          <label htmlFor="listingDurationDays" className="text-sm font-medium">
-            Listing duration (days)
-          </label>
-          <input
-            id="listingDurationDays"
-            name="listingDurationDays"
-            type="number"
-            min={JOB_LISTING_MIN_DAYS}
-            max={JOB_LISTING_MAX_DAYS}
-            value={effectiveListingDurationDays}
-            readOnly={isEditing || fixedListingDurationDays !== null}
-            disabled={disabled}
-            onChange={(event) => {
-              if (isEditing || fixedListingDurationDays !== null) {
-                return
-              }
+        {isAdmin ? (
+          <div className="space-y-1">
+            <label htmlFor="listingDurationDays" className="text-sm font-medium">
+              Listing duration (days)
+            </label>
+            <input
+              id="listingDurationDays"
+              name="listingDurationDays"
+              type="number"
+              min={JOB_LISTING_MIN_DAYS}
+              max={JOB_LISTING_MAX_DAYS}
+              value={effectiveListingDurationDays}
+              readOnly={isEditing}
+              disabled={disabled}
+              onChange={(event) => {
+                if (isEditing) {
+                  return
+                }
 
-              const nextValue = Number.parseInt(event.target.value || String(JOB_LISTING_DEFAULT_DAYS), 10)
-              const safeValue = Number.isNaN(nextValue) ? JOB_LISTING_DEFAULT_DAYS : nextValue
-              setListingDurationDays(Math.min(JOB_LISTING_MAX_DAYS, Math.max(JOB_LISTING_MIN_DAYS, safeValue)))
-            }}
-            className="w-full rounded border px-3 py-2"
-          />
-          {fixedListingDurationDays !== null ? (
-            <p className="text-sm text-slate-600">Free-plan listings run for {fixedListingDurationDays} days. Longer durations are not available on this plan.</p>
-          ) : isEditing ? (
-            <p className="text-sm text-slate-600">Listing duration stays fixed after posting. Edit the content without changing billing.</p>
-          ) : requiresPayment ? (
-            <p className="text-sm text-slate-600">Businesses are charged per day for this listing.</p>
-          ) : null}
-        </div>
+                const nextValue = Number.parseInt(event.target.value || String(JOB_LISTING_DEFAULT_DAYS), 10)
+                const safeValue = Number.isNaN(nextValue) ? JOB_LISTING_DEFAULT_DAYS : nextValue
+                setListingDurationDays(Math.min(JOB_LISTING_MAX_DAYS, Math.max(JOB_LISTING_MIN_DAYS, safeValue)))
+              }}
+              className="w-full rounded border px-3 py-2"
+            />
+            {isEditing ? <p className="text-sm text-slate-600">Listing duration stays fixed after posting. Edit the content without changing billing.</p> : null}
+          </div>
+        ) : (
+          <div className="space-y-1">
+            <input type="hidden" name="listingDurationDays" value={String(effectiveListingDurationDays)} />
+            <label className="text-sm font-medium">Listing duration</label>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+              <p className="font-medium text-slate-900">
+                {listingExpiresAfterDays === null ? "No expiry" : `${listingExpiresAfterDays}-day expiry`}
+              </p>
+              <p className="mt-1">
+                {listingExpiresAfterDays === null
+                  ? "Paid employer plans keep listings live until you close them or your subscription ends."
+                  : `Community listings stay live for ${listingExpiresAfterDays} days, then expire automatically.`}
+              </p>
+            </div>
+          </div>
+        )}
 
-        {canFeatureJob ? (
+        {allListingsFeatured ? (
+          <div className="space-y-3 rounded-lg border border-indigo-200 bg-indigo-50/40 p-4">
+            <input type="hidden" name="isFeatured" value="true" />
+            <div className="flex flex-wrap items-center gap-3">
+              <FeaturedJobBadge />
+              <p className="text-sm font-medium text-slate-900">Partner listings publish with automatic Featured Spotlight placement.</p>
+            </div>
+            <p className="text-sm text-slate-700">Every live Partner role is pinned for premium visibility across supported HireSalem surfaces.</p>
+          </div>
+        ) : canFeatureJob ? (
           <div className="space-y-3 rounded-lg border border-indigo-200 bg-indigo-50/40 p-4">
             <div className="flex flex-wrap items-center gap-3">
               <FeaturedJobBadge inactive={!featuredPlacementEligible} />
               <p className="text-sm font-medium text-slate-900">Give this role stronger visibility on supported HireSalem listing surfaces.</p>
             </div>
+            {featuredJobsLimit !== null ? (
+              <p className="text-sm text-slate-700">
+                Spotlight slots in use:{" "}
+                <span className="font-medium text-slate-900">
+                  {featuredJobsCount} / {featuredJobsLimit}
+                </span>
+              </p>
+            ) : null}
             <label className="flex items-start gap-3">
               <input
                 id="isFeatured"
@@ -606,24 +657,24 @@ export function JobForm({
                 type="checkbox"
                 value="true"
                 defaultChecked={initialValues?.isFeatured ?? false}
-                disabled={disabled}
+                disabled={disabled || featuredSelectionDisabled}
                 className="mt-1 h-4 w-4 rounded border-slate-300"
               />
               <span className="text-sm text-slate-700">
-                Mark this job as featured to add a featured badge and boosted placement where HireSalem supports it.
+                Mark this job as featured to add a Spotlight badge and boosted placement where HireSalem supports it.
               </span>
             </label>
+            {featuredSlotLockedMessage ? <p className="text-sm text-amber-800">{featuredSlotLockedMessage}</p> : null}
             {!featuredPlacementEligible ? (
               <p className="text-sm text-slate-700">
-                Boosted placement is currently available on Featured Job or Business Pro. You can keep this flag on an existing featured job or remove it
-                here.
+                Spotlight placement is currently available on Standard or Partner. You can keep this flag on an existing featured job or remove it here.
               </p>
             ) : null}
           </div>
         ) : !isAdmin ? (
           <div className="rounded-lg border border-indigo-200 bg-indigo-50/40 p-4 text-sm text-slate-700">
-            <p className="font-medium text-slate-950">Featured placement is locked on this plan.</p>
-            <p className="mt-1">Add a featured badge and boosted placement with Featured Job or Business Pro.</p>
+            <p className="font-medium text-slate-950">Featured Spotlight placement is locked on this plan.</p>
+            <p className="mt-1">Upgrade to Standard or Partner to boost visibility on the Salem-first feed.</p>
             <Link href="/dashboard/plan#pricing" className="mt-3 inline-flex font-medium underline underline-offset-4">
               View plan options
             </Link>

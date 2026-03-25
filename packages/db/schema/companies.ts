@@ -25,6 +25,7 @@ export const companies = pgTable("companies", {
   shortDescription: text("short_description"),
   website: text("website"),
   location: text("location"),
+  isManaged: boolean("is_managed").default(false).notNull(),
   linkedinUrl: text("linkedin_url"),
   facebookUrl: text("facebook_url"),
   instagramUrl: text("instagram_url"),

@@ -3,14 +3,18 @@ import { z } from "zod"
 
 import { hasRole, normalizeRoles } from "@/lib/authz"
 import { getCompanyById } from "@/lib/companies"
-import { FEATURED_JOB_PLAN_MESSAGE, getNextFeaturedAt, validateFeaturedJobRequest } from "@/lib/featured-jobs"
-import { getJobStatusLabel, isJobExpired, isJobPublished, JOB_LISTING_DEFAULT_DAYS } from "@/lib/job-listing-billing"
-import { countPublishedJobsForCompany } from "@/lib/jobs"
+import { consumeExtraSlotCredit, getAvailableExtraSlotCredits } from "@/lib/employer-add-ons"
+import { getCommunityLimitErrorMessage } from "@/lib/employer-pricing"
+import { FEATURED_JOB_PLAN_MESSAGE, FEATURED_JOB_SLOT_MESSAGE, featuresAllJobs, getNextFeaturedAt, validateFeaturedJobRequest } from "@/lib/featured-jobs"
+import { getJobStatusLabel, isJobExpired, isJobPublished } from "@/lib/job-listing-billing"
+import { countFeaturedPublishedJobsForCompany, countPublishedJobsForCompany } from "@/lib/jobs"
 import {
   buildJobWriteValues,
   calculateJobExpiration,
   getJobPublicationValidationMessage,
   getJobPublicationValidationReasons,
+  getPlanJobExpiration,
+  getPlanListingDurationDays,
   jobWriteSchema,
   resolveCompanyForJob
 } from "@/lib/job-write"
@@ -39,6 +43,24 @@ type JobRouteContext = {
   params: Promise<{
     id: string
   }>
+}
+
+function resolvePlanScopedExpiration(input: {
+  existingExpiresAt: Date | null
+  activatedAt: Date
+  listingDurationDays: number
+  companyPlan: ReturnType<typeof resolveCompanyPlan> | null
+  now: Date
+}) {
+  if (!input.companyPlan) {
+    return input.existingExpiresAt ?? calculateJobExpiration(input.activatedAt, input.listingDurationDays)
+  }
+
+  if (input.existingExpiresAt) {
+    return getPlanJobExpiration(input.activatedAt, input.listingDurationDays, input.companyPlan)
+  }
+
+  return getPlanJobExpiration(input.now, input.listingDurationDays, input.companyPlan)
 }
 
 export async function GET(_req: Request, { params }: JobRouteContext) {
@@ -111,41 +133,77 @@ export async function PATCH(req: Request, { params }: JobRouteContext) {
       const activeJobCount = await countPublishedJobsForCompany(company.id, { excludeJobId: existing.id, now })
       const nextActiveJobCount = activeJobCount + 1
       const maxActiveJobs = companyPlan.entitlements.maxActiveJobs
+      const availableExtraSlotCredits = maxActiveJobs !== null ? await getAvailableExtraSlotCredits(company.id) : 0
 
-      if (!isWithinCompanyActiveJobLimit(nextActiveJobCount, companyPlan.effectivePlanId)) {
+      if (!isWithinCompanyActiveJobLimit(nextActiveJobCount, companyPlan.effectivePlanId) && availableExtraSlotCredits <= 0) {
         return Response.json(
           {
-            error:
-              maxActiveJobs === null
-                ? "This plan cannot publish another live job right now."
-                : `Free plan allows up to ${maxActiveJobs} live jobs. Close one live job before publishing another.`
+            error: maxActiveJobs === null ? "This plan cannot publish another live job right now." : getCommunityLimitErrorMessage(nextActiveJobCount)
           },
           { status: 400 }
         )
+      }
+
+      if (existing.isFeatured) {
+        const featuredJobValidation = validateFeaturedJobRequest(true, companyPlan, {
+          currentFeaturedJobCount: await countFeaturedPublishedJobsForCompany(company.id, {
+            excludeJobId: existing.id,
+            now
+          })
+        })
+
+        if (!featuredJobValidation.ok) {
+          return Response.json(
+            { error: featuredJobValidation.error === "featured_job_slot_limit_reached" ? FEATURED_JOB_SLOT_MESSAGE : FEATURED_JOB_PLAN_MESSAGE },
+            { status: 400 }
+          )
+        }
       }
     }
   }
 
   if (typeof parsed.data.isFeatured === "boolean" && !isAdmin) {
     const featuredJobValidation = validateFeaturedJobRequest(parsed.data.isFeatured, companyPlan, {
-      allowExistingFeatured: existing.isFeatured
+      allowExistingFeatured: existing.isFeatured,
+      currentFeaturedJobCount: company ? await countFeaturedPublishedJobsForCompany(company.id, { excludeJobId: existing.id, now }) : undefined
     })
 
     if (!featuredJobValidation.ok) {
-      return Response.json({ error: FEATURED_JOB_PLAN_MESSAGE }, { status: 400 })
+      return Response.json({ error: featuredJobValidation.error === "featured_job_slot_limit_reached" ? FEATURED_JOB_SLOT_MESSAGE : FEATURED_JOB_PLAN_MESSAGE }, { status: 400 })
     }
   }
 
   const nextValues: Partial<typeof jobs.$inferInsert> = {}
+  let shouldConsumeExtraSlot = false
+  const preserveActiveFeaturedAddOn =
+    typeof parsed.data.isFeatured === "boolean" &&
+    !parsed.data.isFeatured &&
+    Boolean(existing.featuredExpiresAt && existing.featuredExpiresAt.getTime() > now.getTime())
 
   if (typeof parsed.data.isActive === "boolean") {
+    if (parsed.data.isActive && !existing.isActive && !isAdmin && company && companyPlan && companyPlan.entitlements.maxActiveJobs !== null) {
+      const activeJobCount = await countPublishedJobsForCompany(company.id, { excludeJobId: existing.id, now })
+      if (activeJobCount + 1 > companyPlan.entitlements.maxActiveJobs) {
+        shouldConsumeExtraSlot = true
+      }
+    }
+
     Object.assign(
       nextValues,
       parsed.data.isActive
         ? {
             isActive: true,
             activatedAt: existing.activatedAt ?? now,
-            expiresAt: existing.expiresAt ?? calculateJobExpiration(existing.activatedAt ?? now, existing.listingDurationDays)
+            expiresAt:
+              isAdmin || !companyPlan
+                ? existing.expiresAt ?? calculateJobExpiration(existing.activatedAt ?? now, existing.listingDurationDays)
+                : resolvePlanScopedExpiration({
+                    existingExpiresAt: existing.expiresAt,
+                    activatedAt: existing.activatedAt ?? now,
+                    listingDurationDays: existing.listingDurationDays,
+                    companyPlan,
+                    now
+                  })
           }
         : { isActive: false }
     )
@@ -154,12 +212,20 @@ export async function PATCH(req: Request, { params }: JobRouteContext) {
   if (typeof parsed.data.isFeatured === "boolean") {
     Object.assign(nextValues, {
       isFeatured: parsed.data.isFeatured,
-      featuredAt: getNextFeaturedAt({
-        requestedIsFeatured: parsed.data.isFeatured,
-        existingIsFeatured: existing.isFeatured,
-        featuredAt: existing.featuredAt,
-        now
-      })
+      featuredAt: preserveActiveFeaturedAddOn
+        ? existing.featuredAt
+        : getNextFeaturedAt({
+            requestedIsFeatured: parsed.data.isFeatured,
+            existingIsFeatured: existing.isFeatured,
+            featuredAt: existing.featuredAt,
+            now
+          }),
+      featuredExpiresAt:
+        preserveActiveFeaturedAddOn
+          ? existing.featuredExpiresAt
+          : parsed.data.isFeatured && existing.featuredExpiresAt && existing.featuredExpiresAt.getTime() > now.getTime()
+            ? existing.featuredExpiresAt
+            : null
     })
   }
 
@@ -173,6 +239,14 @@ export async function PATCH(req: Request, { params }: JobRouteContext) {
     await syncGoogleIndexingForJobTransition({
       before: existing,
       after: updated ?? existing
+    })
+  }
+
+  if (shouldConsumeExtraSlot && existing.companyId) {
+    await consumeExtraSlotCredit({
+      companyId: existing.companyId,
+      jobId: existing.id,
+      now
     })
   }
 
@@ -222,25 +296,37 @@ export async function PUT(req: Request, { params }: JobRouteContext) {
   }
 
   const companyPlan = !isAdmin && companyForJob ? resolveCompanyPlan(companyForJob) : null
+  const requestedIsFeatured = !isAdmin && featuresAllJobs(companyPlan) ? true : parsed.data.isFeatured
+  const shouldPublishNow = submissionAction === "publish"
+  const shouldValidatePublication = existing.isActive || shouldPublishNow
+  const currentFeaturedJobCount =
+    !isAdmin && shouldValidatePublication && companyForJob
+      ? await countFeaturedPublishedJobsForCompany(companyForJob.id, {
+          excludeJobId: existing.id
+        })
+      : undefined
   const featuredJobValidation = isAdmin
-    ? { ok: true as const }
-    : validateFeaturedJobRequest(parsed.data.isFeatured, companyPlan, {
-        allowExistingFeatured: existing.isFeatured
+    ? { ok: true as const, isFeatured: requestedIsFeatured }
+    : validateFeaturedJobRequest(requestedIsFeatured, companyPlan, {
+        allowExistingFeatured: existing.isFeatured,
+        currentFeaturedJobCount
       })
 
   if (!featuredJobValidation.ok) {
-    return Response.json({ error: FEATURED_JOB_PLAN_MESSAGE }, { status: 400 })
+    return Response.json({ error: featuredJobValidation.error === "featured_job_slot_limit_reached" ? FEATURED_JOB_SLOT_MESSAGE : FEATURED_JOB_PLAN_MESSAGE }, { status: 400 })
   }
 
   const nextListingDurationDays =
     existing.activatedAt
       ? existing.listingDurationDays
-      : !isAdmin && companyPlan && !companyPlan.entitlements.allowsLongerJobDuration
-        ? JOB_LISTING_DEFAULT_DAYS
-        : parsed.data.listingDurationDays
-  const nextValues = buildJobWriteValues(parsed.data, companyForJob?.id ?? null)
-  const shouldPublishNow = submissionAction === "publish"
-  const shouldValidatePublication = existing.isActive || shouldPublishNow
+      : isAdmin
+        ? parsed.data.listingDurationDays
+        : getPlanListingDurationDays(parsed.data.listingDurationDays, companyPlan)
+  const nextValues = {
+    ...buildJobWriteValues(parsed.data, companyForJob?.id ?? null),
+    isFeatured: featuredJobValidation.isFeatured
+  }
+  let shouldConsumeExtraSlot = false
   const publicationValidationReasons = shouldValidatePublication ? getJobPublicationValidationReasons(nextValues) : []
   const publicationValidationMessage = shouldValidatePublication ? getJobPublicationValidationMessage(publicationValidationReasons) : null
 
@@ -249,22 +335,26 @@ export async function PUT(req: Request, { params }: JobRouteContext) {
   }
 
   const now = new Date()
+  const preserveActiveFeaturedAddOn =
+    !nextValues.isFeatured && Boolean(existing.featuredExpiresAt && existing.featuredExpiresAt.getTime() > now.getTime())
 
   if (shouldPublishNow && !existing.isActive && !isAdmin && companyForJob && companyPlan) {
     const activeJobCount = await countPublishedJobsForCompany(companyForJob.id, { excludeJobId: existing.id, now })
     const nextActiveJobCount = activeJobCount + 1
     const maxActiveJobs = companyPlan.entitlements.maxActiveJobs
+    const availableExtraSlotCredits = maxActiveJobs !== null ? await getAvailableExtraSlotCredits(companyForJob.id) : 0
 
-    if (!isWithinCompanyActiveJobLimit(nextActiveJobCount, companyPlan.effectivePlanId)) {
+    if (!isWithinCompanyActiveJobLimit(nextActiveJobCount, companyPlan.effectivePlanId) && availableExtraSlotCredits <= 0) {
       return Response.json(
         {
-          error:
-            maxActiveJobs === null
-              ? "This plan cannot publish another live job right now."
-              : `Free plan allows up to ${maxActiveJobs} live jobs. Close one live job before publishing another.`
+          error: maxActiveJobs === null ? "This plan cannot publish another live job right now." : getCommunityLimitErrorMessage(nextActiveJobCount)
         },
         { status: 400 }
       )
+    }
+
+    if (maxActiveJobs !== null && nextActiveJobCount > maxActiveJobs && availableExtraSlotCredits > 0) {
+      shouldConsumeExtraSlot = true
     }
   }
 
@@ -277,16 +367,31 @@ export async function PUT(req: Request, { params }: JobRouteContext) {
       isActive: shouldPublishNow ? true : existing.isActive,
       paymentStatus: existing.paymentStatus,
       activatedAt: nextActivatedAt,
-      featuredAt: getNextFeaturedAt({
-        requestedIsFeatured: nextValues.isFeatured,
-        existingIsFeatured: existing.isFeatured,
-        featuredAt: existing.featuredAt,
-        now
-      }),
+      featuredAt: preserveActiveFeaturedAddOn
+        ? existing.featuredAt
+        : getNextFeaturedAt({
+            requestedIsFeatured: nextValues.isFeatured,
+            existingIsFeatured: existing.isFeatured,
+            featuredAt: existing.featuredAt,
+            now
+          }),
+      featuredExpiresAt: preserveActiveFeaturedAddOn
+        ? existing.featuredExpiresAt
+        : nextValues.isFeatured && existing.featuredExpiresAt && existing.featuredExpiresAt.getTime() > now.getTime()
+          ? existing.featuredExpiresAt
+          : null,
       listingDurationDays: nextListingDurationDays,
       expiresAt:
         nextActivatedAt && (shouldRecalculateExpiration || shouldPublishNow)
-          ? calculateJobExpiration(nextActivatedAt, nextListingDurationDays)
+          ? isAdmin
+            ? calculateJobExpiration(nextActivatedAt, nextListingDurationDays)
+            : resolvePlanScopedExpiration({
+                existingExpiresAt: existing.expiresAt,
+                activatedAt: nextActivatedAt,
+                listingDurationDays: nextListingDurationDays,
+                companyPlan,
+                now
+              })
           : existing.expiresAt
     })
     .where(eq(jobs.id, id))
@@ -296,6 +401,14 @@ export async function PUT(req: Request, { params }: JobRouteContext) {
     before: existing,
     after: updated ?? existing
   })
+
+  if (shouldConsumeExtraSlot && existing.companyId) {
+    await consumeExtraSlotCredit({
+      companyId: existing.companyId,
+      jobId: existing.id,
+      now
+    })
+  }
 
   return Response.json(updated)
 }

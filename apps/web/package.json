@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1004.0",
+    "@radix-ui/react-dialog": "^1.1.15",
     "@repo/db": "workspace:*",
     "drizzle-orm": "^0.30.0",
     "next": "latest",

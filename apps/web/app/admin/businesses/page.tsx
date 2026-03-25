@@ -79,7 +79,7 @@ export default async function AdminBusinessesPage({ searchParams }: AdminBusines
     <section className="space-y-6">
       <div className="space-y-2">
         <h1 className="text-2xl font-bold">Business plans</h1>
-        <p className="text-slate-600">Manage manual plan assignments, chamber trials, and override notes on top of the live self-serve billing flow.</p>
+        <p className="text-slate-600">Manage Community, Standard, and Partner assignments, managed-account flags, and override notes on top of billing.</p>
       </div>
 
       {params.updated === "1" ? (
@@ -169,6 +169,7 @@ export default async function AdminBusinessesPage({ searchParams }: AdminBusines
                   /jobs/company/{company.slug} • owner {company.ownerAuthId}
                 </p>
                 <p className="text-sm text-slate-600">Last plan update: {company.planAssignedAt.toLocaleDateString()}</p>
+                <p className="text-sm text-slate-600">Managed account: {company.isManaged ? "Yes" : "No"}</p>
                 {company.planOverrideReason ? <p className="text-sm text-slate-600">Current internal note: {company.planOverrideReason}</p> : null}
               </div>
 
@@ -209,10 +210,18 @@ export default async function AdminBusinessesPage({ searchParams }: AdminBusines
                   name="planOverrideReason"
                   rows={4}
                   defaultValue={company.planOverrideReason ?? ""}
-                  placeholder="Chamber pilot, founder comp, manual featured-job trial, etc."
+                  placeholder="Partner pilot, founder comp, managed migration, etc."
                   className="w-full rounded border px-3 py-2"
                 />
               </div>
+
+              <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                <input id="isManaged" name="isManaged" type="checkbox" value="true" defaultChecked={company.isManaged} className="mt-1 h-4 w-4 rounded border-slate-300" />
+                <span>
+                  <span className="block font-medium text-slate-900">Managed account</span>
+                  Show the employer as rep-managed for white-glove support and enterprise-style handling.
+                </span>
+              </label>
 
               <button type="submit" className="rounded bg-slate-900 px-4 py-2 text-white">
                 Save business plan

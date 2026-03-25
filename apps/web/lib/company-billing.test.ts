@@ -4,6 +4,7 @@ const baseCompany = {
   id: "company-1",
   name: "Cherry City Staffing",
   ownerAuthId: "owner-1",
+  isManaged: false,
   plan: "free" as const,
   planOverride: null,
   planAssignedAt: new Date("2026-03-01T00:00:00.000Z"),
@@ -28,6 +29,9 @@ const updateSetMock = mock(() => ({
 const updateMock = mock(() => ({
   set: updateSetMock
 }))
+const retrievePriceMock = mock(async () => {
+  throw new Error("network down")
+})
 
 mock.module("@/lib/companies", () => ({
   getCompanyById: getCompanyByIdMock
@@ -46,6 +50,14 @@ mock.module("@/lib/db", () => ({
   }
 }))
 
+mock.module("@/lib/stripe", () => ({
+  getStripe: () => ({
+    prices: {
+      retrieve: retrievePriceMock
+    }
+  })
+}))
+
 describe("company billing sync", () => {
   beforeEach(() => {
     getCompanyByIdMock.mockClear()
@@ -53,6 +65,7 @@ describe("company billing sync", () => {
     updateSetMock.mockClear()
     updateWhereMock.mockClear()
     updateReturningMock.mockClear()
+    retrievePriceMock.mockClear()
   })
 
   test("activates the billed plan when Stripe marks the subscription active", async () => {
@@ -66,7 +79,7 @@ describe("company billing sync", () => {
       current_period_end: 1775942400,
       metadata: {
         companyId: "company-1",
-        planId: "business_pro"
+        planId: "partner"
       },
       items: {
         data: [
@@ -78,8 +91,8 @@ describe("company billing sync", () => {
     } as unknown as Parameters<typeof syncCompanyBillingFromStripeSubscription>[0])
 
     const [payload] = updateSetMock.mock.calls[0] ?? []
-    expect(payload?.plan).toBe("business_pro")
-    expect(payload?.billingPlan).toBe("business_pro")
+    expect(payload?.plan).toBe("partner")
+    expect(payload?.billingPlan).toBe("partner")
     expect(payload?.billingStatus).toBe("active")
     expect(payload?.stripeCustomerId).toBe("cus_123")
     expect(payload?.stripeSubscriptionId).toBe("sub_123")
@@ -89,8 +102,8 @@ describe("company billing sync", () => {
   test("drops the base plan back to free when Stripe cancels the subscription", async () => {
     getCompanyByIdMock.mockResolvedValueOnce({
       ...baseCompany,
-      plan: "business_pro",
-      billingPlan: "business_pro",
+      plan: "partner",
+      billingPlan: "partner",
       billingStatus: "active",
       stripeCustomerId: "cus_123",
       stripeSubscriptionId: "sub_123"
@@ -105,7 +118,7 @@ describe("company billing sync", () => {
       current_period_end: 1775942400,
       metadata: {
         companyId: "company-1",
-        planId: "business_pro"
+        planId: "partner"
       },
       items: {
         data: [
@@ -118,14 +131,25 @@ describe("company billing sync", () => {
 
     const [payload] = updateSetMock.mock.calls[0] ?? []
     expect(payload?.plan).toBe("free")
-    expect(payload?.billingPlan).toBe("business_pro")
+    expect(payload?.billingPlan).toBe("partner")
     expect(payload?.billingStatus).toBe("canceled")
   })
 
   test("treats non-active billing states as free-plan access to avoid stale entitlements", async () => {
     const { getCompanyBasePlanForBillingState } = await import("@/lib/company-billing")
 
-    expect(getCompanyBasePlanForBillingState("enhanced_profile", "past_due")).toBe("free")
-    expect(getCompanyBasePlanForBillingState("business_pro", "unpaid")).toBe("free")
+    expect(getCompanyBasePlanForBillingState("standard", "past_due")).toBe("free")
+    expect(getCompanyBasePlanForBillingState("partner", "unpaid")).toBe("free")
+  })
+
+  test("keeps self-serve billing enabled when Stripe price lookup fails but env vars exist", async () => {
+    process.env.STRIPE_STANDARD_PLAN_PRICE_ID = "price_standard"
+    process.env.STRIPE_PARTNER_PLAN_PRICE_ID = "price_partner"
+
+    const { listCompanyPlanPricing } = await import("@/lib/company-billing")
+    const pricing = await listCompanyPlanPricing()
+
+    expect(pricing.find((item) => item.id === "standard")?.isConfigured).toBe(true)
+    expect(pricing.find((item) => item.id === "partner")?.isConfigured).toBe(true)
   })
 })

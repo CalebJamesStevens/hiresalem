@@ -13,7 +13,8 @@ describe("company plan UI helpers", () => {
       "enhanced_company_story",
       "company_media",
       "featured_job_visibility",
-      "higher_job_limit"
+      "higher_job_limit",
+      "top_employer_slot"
     ])
   })
 
@@ -21,13 +22,13 @@ describe("company plan UI helpers", () => {
     const plan = resolveCompanyPlan({ plan: "free" })
     const feature = getLockedCompanyFeatureMessage(plan, "featured_job_visibility")
 
-    expect(feature?.availabilityLabel).toBe("Available on Featured Job or Business Pro")
+    expect(feature?.availabilityLabel).toBe("Available on Standard or Partner")
   })
 
-  test("shows no upgrade-only capabilities for business pro", () => {
-    const plan = resolveCompanyPlan({ plan: "business_pro" })
+  test("shows no upgrade-only capabilities for partner", () => {
+    const plan = resolveCompanyPlan({ plan: "partner" })
 
     expect(getEmployerPlanUpgradeHighlights(plan)).toHaveLength(0)
-    expect(getEmployerPlanIncludedHighlights(plan)).toContain("More than 3 live jobs can stay active at once.")
+    expect(getEmployerPlanIncludedHighlights(plan)).toContain("Unlimited live jobs can stay active at once.")
   })
 })

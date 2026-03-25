@@ -17,6 +17,7 @@ import {
 import { normalizeRoles } from "@/lib/authz"
 import { getBusinessOnboardingRedirectPath, shouldGrantBusinessRole } from "@/lib/business-onboarding"
 import { db } from "@/lib/db"
+import { getEmployerExistingAccountHref, getEmployerPlanSelectionHref, getEmployerSelfServePlan } from "@/lib/employer-self-serve"
 import { grantRealmRoleToUserInKeycloak } from "@/lib/keycloak"
 import { getSessionSafe } from "@/lib/session"
 import { companies } from "@repo/db/schema/companies"
@@ -24,6 +25,7 @@ import { companies } from "@repo/db/schema/companies"
 type BecomeBusinessPageProps = {
   searchParams: Promise<{
     error?: string
+    plan?: string
   }>
 }
 
@@ -97,19 +99,20 @@ function errorMessage(error: string | undefined) {
 
 export default async function BecomeBusinessPage({ searchParams }: BecomeBusinessPageProps) {
   const params = await searchParams
+  const selectedPlan = getEmployerSelfServePlan(params.plan)
   const session = await getSessionSafe()
   const userId = session?.user?.id
   const roles = normalizeRoles(session?.user?.roles)
 
   if (!userId) {
-    redirect("/signin?callbackUrl=/become-business")
+    redirect(`/signin?callbackUrl=${encodeURIComponent(`/become-business?plan=${selectedPlan}`)}`)
   }
 
   const existingCompany = await getCompanyByOwnerAuthId(userId)
   const redirectPath = getBusinessOnboardingRedirectPath(roles, Boolean(existingCompany))
 
   if (redirectPath) {
-    redirect(redirectPath)
+    redirect(getEmployerExistingAccountHref(selectedPlan))
   }
 
   const message = errorMessage(params.error)
@@ -119,15 +122,22 @@ export default async function BecomeBusinessPage({ searchParams }: BecomeBusines
       <div className="space-y-2">
         <h1 className="text-3xl font-bold">Become a business account</h1>
         <p className="max-w-xl text-slate-600">
-          Create your Free-plan company profile and unlock job posting from the same account you already use on HireSalem.
+          Create your Community-plan company profile and unlock Salem-first job posting from the same account you already use on HireSalem.
         </p>
       </div>
+
+      {selectedPlan !== "free" ? (
+        <div className="rounded-lg border border-indigo-200 bg-indigo-50/40 p-4 text-sm text-slate-700">
+          <p className="font-medium text-slate-900">You selected the {selectedPlan === "standard" ? "Standard" : "Partner"} plan.</p>
+          <p className="mt-1">Finish company setup first. After this form saves, you’ll continue directly to self-serve billing for that plan.</p>
+        </div>
+      ) : null}
 
       {message ? <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{message}</p> : null}
 
       <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-        <p className="font-medium text-slate-900">Free plan included right now</p>
-        <p className="mt-1">Up to 3 active jobs, a basic public company profile, standard visibility, and no paid-placement features yet.</p>
+        <p className="font-medium text-slate-900">Community plan included right now</p>
+        <p className="mt-1">Up to 2 active jobs, 30-day listing expiry, a basic public company profile, and standard Salem-first visibility.</p>
       </div>
 
       <form
@@ -137,9 +147,10 @@ export default async function BecomeBusinessPage({ searchParams }: BecomeBusines
           const session = await getSessionSafe()
           const userId = session?.user?.id
           const roles = normalizeRoles(session?.user?.roles)
+          const selectedPlan = getEmployerSelfServePlan(String(formData.get("selectedPlan") ?? "free"))
 
           if (!userId) {
-            redirect("/signin?callbackUrl=/become-business")
+            redirect(`/signin?callbackUrl=${encodeURIComponent(`/become-business?plan=${selectedPlan}`)}`)
           }
 
           const parsed = parseCompanyProfileInput({
@@ -151,14 +162,14 @@ export default async function BecomeBusinessPage({ searchParams }: BecomeBusines
           })
 
           if (!parsed.success) {
-            redirect(`/become-business?error=${getCompanyProfileValidationErrorCode(parsed.error)}`)
+            redirect(`/become-business?plan=${selectedPlan}&error=${getCompanyProfileValidationErrorCode(parsed.error)}`)
           }
 
           const existingCompany = await getCompanyByOwnerAuthId(userId)
           const redirectPath = getBusinessOnboardingRedirectPath(roles, Boolean(existingCompany))
 
           if (redirectPath) {
-            redirect(redirectPath)
+            redirect(getEmployerExistingAccountHref(selectedPlan))
           }
 
           let companyId = existingCompany?.id ?? null
@@ -184,12 +195,12 @@ export default async function BecomeBusinessPage({ searchParams }: BecomeBusines
 
               companyId = createdCompany?.id ?? null
             } catch {
-              redirect("/become-business?error=already_business")
+              redirect(`/become-business?plan=${selectedPlan}&error=already_business`)
             }
           }
 
           if (!companyId) {
-            redirect("/become-business")
+            redirect(`/become-business?plan=${selectedPlan}`)
           }
 
           if (shouldGrantBusinessRole(roles)) {
@@ -202,7 +213,7 @@ export default async function BecomeBusinessPage({ searchParams }: BecomeBusines
               if (shouldDeleteCreatedCompany) {
                 await db.delete(companies).where(eq(companies.id, companyId))
               }
-              redirect(`/become-business?error=${roleResult.reason}`)
+              redirect(`/become-business?plan=${selectedPlan}&error=${roleResult.reason}`)
             }
 
             await unstable_update({
@@ -212,10 +223,11 @@ export default async function BecomeBusinessPage({ searchParams }: BecomeBusines
             })
           }
 
-          redirect("/dashboard/company?welcome=1")
+          redirect(getEmployerPlanSelectionHref(selectedPlan))
         }}
         className="space-y-4 rounded-lg border bg-white p-6"
       >
+        <input type="hidden" name="selectedPlan" value={selectedPlan} />
         <div className="space-y-1">
           <label htmlFor="name" className="text-sm font-medium">
             Business name
@@ -235,7 +247,7 @@ export default async function BecomeBusinessPage({ searchParams }: BecomeBusines
             placeholder="https://example.com/logo.png"
             className="w-full rounded border px-3 py-2"
           />
-          <p className="text-xs text-slate-500">Use a hosted image URL for now. Upload support is out of scope for the Free plan.</p>
+          <p className="text-xs text-slate-500">Use a hosted image URL for now. Upload support is out of scope for the Community plan.</p>
         </div>
 
         <div className="space-y-1">
@@ -280,7 +292,7 @@ export default async function BecomeBusinessPage({ searchParams }: BecomeBusines
         </div>
 
         <button type="submit" className="rounded bg-slate-900 px-4 py-2 text-white">
-          Start Free business profile
+          {selectedPlan === "free" ? "Start Free business profile" : `Continue to ${selectedPlan === "standard" ? "Standard" : "Partner"} billing`}
         </button>
       </form>
     </section>

@@ -120,6 +120,20 @@
       "when": 1773437237428,
       "tag": "0017_giant_dark_phoenix",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1774323075797,
+      "tag": "0018_silent_earthquake",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1774324415214,
+      "tag": "0019_last_blob",
+      "breakpoints": true
     }
   ]
 }

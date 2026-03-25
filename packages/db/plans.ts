@@ -1,4 +1,4 @@
-export const companyPlanIds = ["free", "enhanced_profile", "featured_job", "business_pro"] as const
+export const companyPlanIds = ["free", "standard", "partner"] as const
 
 export type CompanyPlanId = (typeof companyPlanIds)[number]
 
@@ -6,6 +6,8 @@ export const DEFAULT_COMPANY_PLAN_ID: CompanyPlanId = "free"
 
 export type CompanyPlanEntitlements = {
   maxActiveJobs: number | null
+  maxFeaturedJobs: number | null
+  jobExpiresAfterDays: number | null
   allowsSocialLinks: boolean
   allowsEnhancedCompanyProfileSections: boolean
   allowsExpandedAboutSection: boolean
@@ -15,7 +17,7 @@ export type CompanyPlanEntitlements = {
   allowsProfileHighlighting: boolean
   allowsFeaturedJobs: boolean
   allowsBoostedJobPlacement: boolean
-  allowsLongerJobDuration: boolean
+  includesTopEmployerSlot: boolean
 }
 
 export type CompanyPlanDefinition = {
@@ -32,9 +34,11 @@ export type CompanyPlanAssignment = {
 export const COMPANY_PLAN_DEFINITIONS: Record<CompanyPlanId, CompanyPlanDefinition> = {
   free: {
     id: "free",
-    label: "Free",
+    label: "Community",
     entitlements: {
-      maxActiveJobs: 3,
+      maxActiveJobs: 2,
+      maxFeaturedJobs: 0,
+      jobExpiresAfterDays: 30,
       allowsSocialLinks: false,
       allowsEnhancedCompanyProfileSections: false,
       allowsExpandedAboutSection: false,
@@ -44,48 +48,16 @@ export const COMPANY_PLAN_DEFINITIONS: Record<CompanyPlanId, CompanyPlanDefiniti
       allowsProfileHighlighting: false,
       allowsFeaturedJobs: false,
       allowsBoostedJobPlacement: false,
-      allowsLongerJobDuration: false
+      includesTopEmployerSlot: false
     }
   },
-  enhanced_profile: {
-    id: "enhanced_profile",
-    label: "Enhanced Profile",
-    entitlements: {
-      maxActiveJobs: 3,
-      allowsSocialLinks: true,
-      allowsEnhancedCompanyProfileSections: true,
-      allowsExpandedAboutSection: true,
-      allowsWhyWorkHereSection: true,
-      allowsPerksAndBenefitsSection: true,
-      allowsCompanyMediaGallery: true,
-      allowsProfileHighlighting: true,
-      allowsFeaturedJobs: false,
-      allowsBoostedJobPlacement: false,
-      allowsLongerJobDuration: false
-    }
-  },
-  featured_job: {
-    id: "featured_job",
-    label: "Featured Job",
-    entitlements: {
-      maxActiveJobs: 3,
-      allowsSocialLinks: false,
-      allowsEnhancedCompanyProfileSections: false,
-      allowsExpandedAboutSection: false,
-      allowsWhyWorkHereSection: false,
-      allowsPerksAndBenefitsSection: false,
-      allowsCompanyMediaGallery: false,
-      allowsProfileHighlighting: false,
-      allowsFeaturedJobs: true,
-      allowsBoostedJobPlacement: true,
-      allowsLongerJobDuration: true
-    }
-  },
-  business_pro: {
-    id: "business_pro",
-    label: "Business Pro",
+  standard: {
+    id: "standard",
+    label: "Standard",
     entitlements: {
       maxActiveJobs: null,
+      maxFeaturedJobs: 1,
+      jobExpiresAfterDays: null,
       allowsSocialLinks: true,
       allowsEnhancedCompanyProfileSections: true,
       allowsExpandedAboutSection: true,
@@ -95,7 +67,26 @@ export const COMPANY_PLAN_DEFINITIONS: Record<CompanyPlanId, CompanyPlanDefiniti
       allowsProfileHighlighting: true,
       allowsFeaturedJobs: true,
       allowsBoostedJobPlacement: true,
-      allowsLongerJobDuration: true
+      includesTopEmployerSlot: false
+    }
+  },
+  partner: {
+    id: "partner",
+    label: "Partner",
+    entitlements: {
+      maxActiveJobs: null,
+      maxFeaturedJobs: null,
+      jobExpiresAfterDays: null,
+      allowsSocialLinks: true,
+      allowsEnhancedCompanyProfileSections: true,
+      allowsExpandedAboutSection: true,
+      allowsWhyWorkHereSection: true,
+      allowsPerksAndBenefitsSection: true,
+      allowsCompanyMediaGallery: true,
+      allowsProfileHighlighting: true,
+      allowsFeaturedJobs: true,
+      allowsBoostedJobPlacement: true,
+      includesTopEmployerSlot: true
     }
   }
 }

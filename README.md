@@ -34,9 +34,12 @@ Copy `.env.example` to `.env` and set real values:
 - `NEXT_PUBLIC_APP_URL` (recommended for Stripe redirects)
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`
-- `STRIPE_ENHANCED_PROFILE_PRICE_ID`
-- `STRIPE_FEATURED_JOB_PRICE_ID`
-- `STRIPE_BUSINESS_PRO_PRICE_ID`
+- `STRIPE_STANDARD_PLAN_PRICE_ID`
+- `STRIPE_PARTNER_PLAN_PRICE_ID`
+- `STRIPE_EXTRA_SLOT_PRICE_ID`
+- `STRIPE_WEEKLY_FEATURE_PRICE_ID`
+- `STRIPE_SOCIAL_SHOUTOUT_PRICE_ID`
+- `EMPLOYER_NOTIFICATIONS_EMAIL` (optional, used for social shoutout queue emails)
 - `GOOGLE_INDEXING_API_SERVICE_ACCOUNT_JSON` or both `GOOGLE_INDEXING_API_CLIENT_EMAIL` + `GOOGLE_INDEXING_API_PRIVATE_KEY` (optional, recommended for job URL indexing)
 - `CRON_SECRET` (required if you want cron endpoints protected)
 
@@ -68,23 +71,26 @@ Business plans foundation:
 - employer/company accounts now persist a base `plan` plus an optional `planOverride`
 - the effective plan and entitlements live in [`packages/db/plans.ts`](/Users/caleb/repos/hiresalem/packages/db/plans.ts)
 - existing companies default safely to `free`
-- the `free` plan currently allows up to 3 active jobs, standard visibility, and basic profile fields only
+- the `free` plan is the Community tier: up to 2 active jobs, 30-day expiry, standard visibility, and basic profile fields only
 - Free-plan onboarding lives at `/become-business` and captures the basic public company profile fields: name, logo URL, short description, website, and city/area
 - the employer-facing profile editor lives at `/dashboard/company`, and the public company page continues to render at `/jobs/company/[slug]`
-- Free-plan employers can save drafts, publish up to 3 live jobs at once, close/reopen eligible jobs from `/dashboard/jobs`, and use the standard listing duration without billing
-- Enhanced Profile unlocks social links, expanded about content, why work here, benefits/perks, and hosted cover/gallery image URLs on company pages
+- Community-plan employers can save drafts, publish up to 2 live jobs at once, close/reopen eligible jobs from `/dashboard/jobs`, and use the fixed 30-day listing window
+- Standard and Partner unlock social links, expanded about content, why work here, benefits/perks, and hosted cover/gallery image URLs on company pages
 - public company pages only render those richer sections when the effective plan allows them; stored enhanced fields stay hidden on Free
-- Featured Job and Business Pro unlock a featured checkbox on employer job forms, a featured quick action in `/dashboard/jobs`, and boosted ordering on supported public job-listing surfaces
+- Standard unlocks one Spotlight slot; Partner features all listings and unlocks Top Employer placement across supported surfaces
 - featured visibility stays controlled by the company entitlement at render time, so jobs lose public boosting automatically if the business is downgraded later
+- one-time employer add-ons now support Extra Slot, Weekly Feature, and Social Shoutout purchases through Stripe Checkout
 - employers can review their current plan, compare paid options, start checkout, and manage subscriptions at `/dashboard/plan`
 - self-serve billing uses Stripe subscriptions and updates the company base plan from webhook-driven syncs
 - admin/manual overrides still work; they layer on top of the billing-driven base plan for support or pilot situations
-- admins can manually assign pilot plans and override notes for businesses at `/admin/businesses`
+- admins can manually assign plans, managed-account flags, and override notes at `/admin/businesses`, and process social shoutout queue items at `/admin/jobs`
 
 Stripe subscription setup:
 
-- configure the three plan price IDs above for Enhanced Profile, Featured Job, and Business Pro
+- configure the two recurring plan price IDs above for Standard and Partner
+- configure the three one-time add-on price IDs above for Extra Slot, Weekly Feature, and Social Shoutout
 - the app maps those Stripe price IDs back into internal plan IDs in [`apps/web/lib/company-billing.ts`](/Users/caleb/repos/hiresalem/apps/web/lib/company-billing.ts)
+- one-time add-on mapping and fulfillment live in [`apps/web/lib/employer-add-ons.ts`](/Users/caleb/repos/hiresalem/apps/web/lib/employer-add-ons.ts)
 - `/api/stripe/webhooks` now needs the existing checkout events plus `customer.subscription.created`, `customer.subscription.updated`, and `customer.subscription.deleted`
 - the Stripe customer portal should be enabled if you want businesses to self-serve plan changes or cancellations after the initial checkout
 

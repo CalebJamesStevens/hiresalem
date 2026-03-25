@@ -1,12 +1,12 @@
 import { describe, expect, test } from "bun:test"
 
-import { canUseFeaturedJobs, getNextFeaturedAt, shouldBoostFeaturedJobs, validateFeaturedJobRequest } from "@/lib/featured-jobs"
+import { canUseFeaturedJobs, featuresAllJobs, getNextFeaturedAt, isJobFeaturedForPlan, shouldBoostFeaturedJobs, validateFeaturedJobRequest } from "@/lib/featured-jobs"
 import { resolveCompanyPlan } from "@repo/db/plans"
 
 describe("featured job helpers", () => {
-  test("allows featured placement on featured-job plans", () => {
-    expect(canUseFeaturedJobs(resolveCompanyPlan({ plan: "featured_job" }))).toBe(true)
-    expect(canUseFeaturedJobs(resolveCompanyPlan({ plan: "business_pro" }))).toBe(true)
+  test("allows featured placement on paid plans", () => {
+    expect(canUseFeaturedJobs(resolveCompanyPlan({ plan: "standard" }))).toBe(true)
+    expect(canUseFeaturedJobs(resolveCompanyPlan({ plan: "partner" }))).toBe(true)
     expect(canUseFeaturedJobs(resolveCompanyPlan({ plan: "free" }))).toBe(false)
   })
 
@@ -26,6 +26,23 @@ describe("featured job helpers", () => {
       ok: true,
       isFeatured: true
     })
+  })
+
+  test("marks partner plans as auto-featured for every listing", () => {
+    expect(featuresAllJobs(resolveCompanyPlan({ plan: "partner" }))).toBe(true)
+    expect(featuresAllJobs(resolveCompanyPlan({ plan: "standard" }))).toBe(false)
+  })
+
+  test("treats partner listings as featured even without a stored featured flag", () => {
+    expect(
+      isJobFeaturedForPlan(
+        {
+          isFeatured: false,
+          featuredExpiresAt: null
+        },
+        resolveCompanyPlan({ plan: "partner" })
+      )
+    ).toBe(true)
   })
 
   test("only boosts approved search modes", () => {
@@ -93,5 +110,31 @@ describe("featured job helpers", () => {
         featuredAt
       })
     ).toBeNull()
+  })
+
+  test("treats active add-on features as visible even without a plan slot", () => {
+    expect(
+      isJobFeaturedForPlan(
+        {
+          isFeatured: false,
+          featuredExpiresAt: new Date("2026-03-30T18:00:00.000Z")
+        },
+        resolveCompanyPlan({ plan: "free" }),
+        new Date("2026-03-23T18:00:00.000Z")
+      )
+    ).toBe(true)
+  })
+
+  test("does not treat expired add-on boosts as permanent Standard spotlights", () => {
+    expect(
+      isJobFeaturedForPlan(
+        {
+          isFeatured: false,
+          featuredExpiresAt: new Date("2026-03-20T18:00:00.000Z")
+        },
+        resolveCompanyPlan({ plan: "standard" }),
+        new Date("2026-03-23T18:00:00.000Z")
+      )
+    ).toBe(false)
   })
 })

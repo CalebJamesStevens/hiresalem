@@ -62,8 +62,20 @@ const getCompanyByIdMock = mock(async () => ({
   planOverride: null
 }))
 
-const countPublishedJobsForCompanyMock = mock(async () => 2)
+const countPublishedJobsForCompanyMock = mock(async () => 1)
+const countFeaturedPublishedJobsForCompanyMock = mock(async () => 0)
+const getAvailableExtraSlotCreditsMock = mock(async () => 0)
+const consumeExtraSlotCreditMock = mock(async () => null)
 const syncGoogleIndexingMock = mock(async () => ({ ok: true, skipped: false }))
+const jobWriteSchemaSafeParseMock = mock(() => ({
+  success: false
+}))
+const resolveCompanyForJobMock = mock(async () => null)
+const buildJobWriteValuesMock = mock(() => ({}))
+const calculateJobExpirationMock = mock((startedAt: Date, listingDurationDays: number) => new Date(startedAt.getTime() + listingDurationDays * 24 * 60 * 60 * 1000))
+const getPlanJobExpirationMock = mock((_startedAt: Date, _listingDurationDays: number, plan?: { entitlements?: { jobExpiresAfterDays?: number | null } }) =>
+  plan?.entitlements?.jobExpiresAfterDays === null ? null : new Date("2026-04-11T18:00:00.000Z")
+)
 
 mock.module("@/lib/api-auth", () => ({
   requireApiRoles: requireApiRolesMock
@@ -86,20 +98,28 @@ mock.module("@/lib/companies", () => ({
 }))
 
 mock.module("@/lib/jobs", () => ({
-  countPublishedJobsForCompany: countPublishedJobsForCompanyMock
+  countPublishedJobsForCompany: countPublishedJobsForCompanyMock,
+  countFeaturedPublishedJobsForCompany: countFeaturedPublishedJobsForCompanyMock
+}))
+
+mock.module("@/lib/employer-add-ons", () => ({
+  getAvailableExtraSlotCredits: getAvailableExtraSlotCreditsMock,
+  consumeExtraSlotCredit: consumeExtraSlotCreditMock,
+  getActiveFeaturedAddOnCondition: () => false
 }))
 
 mock.module("@/lib/job-write", () => ({
   getJobPublicationValidationReasons: () => [],
   getJobPublicationValidationMessage: () => null,
-  calculateJobExpiration: (startedAt: Date, listingDurationDays: number) => new Date(startedAt.getTime() + listingDurationDays * 24 * 60 * 60 * 1000),
+  calculateJobExpiration: calculateJobExpirationMock,
+  getPlanListingDurationDays: (_listingDurationDays: number, plan?: { entitlements?: { jobExpiresAfterDays?: number | null } }) =>
+    plan?.entitlements?.jobExpiresAfterDays ?? 30,
+  getPlanJobExpiration: getPlanJobExpirationMock,
   jobWriteSchema: {
-    safeParse: () => ({
-      success: false
-    })
+    safeParse: jobWriteSchemaSafeParseMock
   },
-  resolveCompanyForJob: async () => null,
-  buildJobWriteValues: () => ({}),
+  resolveCompanyForJob: resolveCompanyForJobMock,
+  buildJobWriteValues: buildJobWriteValuesMock,
   toJobSlug: () => "job"
 }))
 
@@ -120,7 +140,20 @@ describe("PATCH /api/jobs/[id]", () => {
     updateReturningMock.mockClear()
     getCompanyByIdMock.mockClear()
     countPublishedJobsForCompanyMock.mockClear()
+    countFeaturedPublishedJobsForCompanyMock.mockClear()
+    getAvailableExtraSlotCreditsMock.mockClear()
+    consumeExtraSlotCreditMock.mockClear()
     syncGoogleIndexingMock.mockClear()
+    jobWriteSchemaSafeParseMock.mockClear()
+    resolveCompanyForJobMock.mockClear()
+    buildJobWriteValuesMock.mockClear()
+    calculateJobExpirationMock.mockClear()
+    getPlanJobExpirationMock.mockClear()
+    jobWriteSchemaSafeParseMock.mockReturnValue({
+      success: false
+    })
+    resolveCompanyForJobMock.mockResolvedValue(null)
+    buildJobWriteValuesMock.mockReturnValue({})
   })
 
   test("publishes a draft job and stamps activation dates", async () => {
@@ -187,7 +220,7 @@ describe("PATCH /api/jobs/[id]", () => {
 
     expect(response.status).toBe(400)
     await expect(response.json()).resolves.toEqual({
-      error: "Featured placement is available on Featured Job or Business Pro."
+      error: "Spotlight placement is available on Standard or Partner."
     })
     expect(updateMock).not.toHaveBeenCalled()
   })
@@ -221,5 +254,238 @@ describe("PATCH /api/jobs/[id]", () => {
     const [payload] = updateSetMock.mock.calls.at(-1) ?? []
     expect(payload?.isFeatured).toBe(false)
     expect(payload?.featuredAt).toBeNull()
+  })
+
+  test("preserves an active weekly feature when removing the manual featured flag", async () => {
+    const activeFeaturedUntil = new Date("2026-03-30T18:00:00.000Z")
+    selectLimitMock.mockResolvedValueOnce([
+      {
+        ...existingDraftJob,
+        isFeatured: true,
+        featuredAt: new Date("2026-03-22T18:00:00.000Z"),
+        featuredExpiresAt: activeFeaturedUntil
+      }
+    ])
+    const { PATCH } = await import("@/app/api/jobs/[id]/route")
+
+    const response = await PATCH(
+      new Request("http://localhost:3000/api/jobs/job-1", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ isFeatured: false })
+      }),
+      {
+        params: Promise.resolve({
+          id: "job-1"
+        })
+      }
+    )
+
+    expect(response.status).toBe(200)
+    const [payload] = updateSetMock.mock.calls.at(-1) ?? []
+    expect(payload?.isFeatured).toBe(false)
+    expect(payload?.featuredAt).toBeInstanceOf(Date)
+    expect(payload?.featuredExpiresAt).toBe(activeFeaturedUntil)
+  })
+
+  test("preserves an active weekly feature when editing content", async () => {
+    const activeFeaturedUntil = new Date("2026-03-30T18:00:00.000Z")
+    const existingJob = {
+      ...existingDraftJob,
+      isActive: true,
+      featuredAt: new Date("2026-03-22T18:00:00.000Z"),
+      featuredExpiresAt: activeFeaturedUntil,
+      expiresAt: new Date("2026-04-11T18:00:00.000Z")
+    }
+    selectLimitMock.mockResolvedValueOnce([existingJob])
+    jobWriteSchemaSafeParseMock.mockReturnValueOnce({
+      success: true as const,
+      data: {
+        title: "Operations Manager",
+        slug: "operations-manager",
+        isFeatured: false,
+        listingDurationDays: 30,
+        website: "",
+        applyType: "onsite"
+      }
+    })
+    resolveCompanyForJobMock.mockResolvedValueOnce({
+      id: "company-1",
+      plan: "free" as const,
+      planOverride: null
+    })
+    buildJobWriteValuesMock.mockReturnValueOnce({
+      description: "Updated description",
+      applyType: "onsite",
+      isFeatured: false
+    })
+
+    const { PUT } = await import("@/app/api/jobs/[id]/route")
+
+    const response = await PUT(
+      new Request("http://localhost:3000/api/jobs/job-1", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          title: "Operations Manager",
+          slug: "operations-manager",
+          description: "Updated description",
+          applyType: "onsite",
+          isFeatured: false,
+          listingDurationDays: 30,
+          submissionAction: "save",
+          website: ""
+        })
+      }),
+      {
+        params: Promise.resolve({
+          id: "job-1"
+        })
+      }
+    )
+
+    expect(response.status).toBe(200)
+    const [payload] = updateSetMock.mock.calls.at(-1) ?? []
+    expect(payload?.isFeatured).toBe(false)
+    expect(payload?.featuredAt).toBe(existingJob.featuredAt)
+    expect(payload?.featuredExpiresAt).toBe(activeFeaturedUntil)
+  })
+
+  test("uses the current time when a downgraded no-expiry job is reopened", async () => {
+    const RealDate = Date
+    const fixedNow = new RealDate("2026-03-24T18:00:00.000Z")
+
+    // @ts-expect-error test override
+    globalThis.Date = class extends RealDate {
+      constructor(value?: string | number | Date) {
+        super(value ?? fixedNow)
+      }
+
+      static now() {
+        return fixedNow.getTime()
+      }
+    }
+
+    selectLimitMock.mockResolvedValueOnce([
+      {
+        ...existingDraftJob,
+        isActive: false,
+        activatedAt: new RealDate("2026-01-01T18:00:00.000Z"),
+        expiresAt: null
+      }
+    ])
+
+    try {
+      const { PATCH } = await import("@/app/api/jobs/[id]/route")
+
+      const response = await PATCH(
+        new Request("http://localhost:3000/api/jobs/job-1", {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ isActive: true })
+        }),
+        {
+          params: Promise.resolve({
+            id: "job-1"
+          })
+        }
+      )
+
+      expect(response.status).toBe(200)
+      expect(getPlanJobExpirationMock).toHaveBeenCalledTimes(1)
+      const [startedAt] = getPlanJobExpirationMock.mock.calls[0] ?? []
+      expect(startedAt).toBeInstanceOf(RealDate)
+      expect(startedAt?.toISOString()).toBe(fixedNow.toISOString())
+    } finally {
+      globalThis.Date = RealDate
+    }
+  })
+
+  test("uses the current time when editing a downgraded live job that previously had no expiry", async () => {
+    const RealDate = Date
+    const fixedNow = new RealDate("2026-03-24T18:00:00.000Z")
+
+    // @ts-expect-error test override
+    globalThis.Date = class extends RealDate {
+      constructor(value?: string | number | Date) {
+        super(value ?? fixedNow)
+      }
+
+      static now() {
+        return fixedNow.getTime()
+      }
+    }
+
+    selectLimitMock.mockResolvedValueOnce([
+      {
+        ...existingDraftJob,
+        isActive: true,
+        activatedAt: new RealDate("2026-01-01T18:00:00.000Z"),
+        expiresAt: null
+      }
+    ])
+    jobWriteSchemaSafeParseMock.mockReturnValueOnce({
+      success: true as const,
+      data: {
+        title: "Operations Manager",
+        slug: "operations-manager",
+        isFeatured: false,
+        listingDurationDays: 30,
+        website: "",
+        applyType: "onsite"
+      }
+    })
+    resolveCompanyForJobMock.mockResolvedValueOnce({
+      id: "company-1",
+      plan: "free" as const,
+      planOverride: null
+    })
+    buildJobWriteValuesMock.mockReturnValueOnce({
+      description: "Updated description",
+      applyType: "onsite",
+      isFeatured: false
+    })
+
+    try {
+      const { PUT } = await import("@/app/api/jobs/[id]/route")
+
+      const response = await PUT(
+        new Request("http://localhost:3000/api/jobs/job-1", {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            title: "Operations Manager",
+            slug: "operations-manager",
+            description: "Updated description",
+            applyType: "onsite",
+            isFeatured: false,
+            listingDurationDays: 30,
+            submissionAction: "save",
+            website: ""
+          })
+        }),
+        {
+          params: Promise.resolve({
+            id: "job-1"
+          })
+        }
+      )
+
+      expect(response.status).toBe(200)
+      expect(getPlanJobExpirationMock).toHaveBeenCalledTimes(1)
+      const [startedAt] = getPlanJobExpirationMock.mock.calls[0] ?? []
+      expect(startedAt).toBeInstanceOf(RealDate)
+      expect(startedAt?.toISOString()).toBe(fixedNow.toISOString())
+    } finally {
+      globalThis.Date = RealDate
+    }
   })
 })

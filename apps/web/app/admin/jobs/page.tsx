@@ -1,16 +1,25 @@
 import Link from "next/link"
+import { redirect } from "next/navigation"
 
 import { JobModerationActions } from "@/components/job-moderation-actions"
+import { listPendingSocialShoutouts, markSocialShoutoutFulfilled } from "@/lib/employer-add-ons"
 import { getEmployerJobLifecycleStatus, getJobStatusLabel, isJobExpired } from "@/lib/job-listing-billing"
 import { requirePageRoles } from "@/lib/page-auth"
 import { listAllJobs } from "@/lib/jobs"
 
 export const dynamic = "force-dynamic"
 
-export default async function AdminJobsPage() {
+export default async function AdminJobsPage({
+  searchParams
+}: {
+  searchParams: Promise<{
+    shoutoutUpdated?: string
+  }>
+}) {
+  const params = await searchParams
   await requirePageRoles(["admin"], "/admin/jobs")
 
-  const jobs = await listAllJobs()
+  const [jobs, pendingSocialShoutouts] = await Promise.all([listAllJobs(), listPendingSocialShoutouts()])
 
   return (
     <section className="space-y-4">
@@ -20,6 +29,48 @@ export default async function AdminJobsPage() {
           Import batch JSON
         </Link>
       </div>
+      {params.shoutoutUpdated === "1" ? (
+        <p className="rounded border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">Social shoutout marked fulfilled.</p>
+      ) : null}
+
+      <section className="space-y-3 rounded-2xl border bg-white p-5 shadow-sm">
+        <div className="space-y-1">
+          <h2 className="text-lg font-semibold text-slate-950">Pending social shoutouts</h2>
+          <p className="text-sm text-slate-600">Manual queue for paid social promotion purchases.</p>
+        </div>
+        {pendingSocialShoutouts.length === 0 ? <p className="text-sm text-slate-600">No pending social shoutouts.</p> : null}
+        {pendingSocialShoutouts.map((purchase) => (
+          <article key={purchase.id} className="rounded-2xl border border-slate-200 p-4">
+            <div className="space-y-2">
+              <p className="font-medium text-slate-900">
+                {purchase.companyName} • {purchase.jobTitle}
+              </p>
+              <p className="text-sm text-slate-600">Paid: {purchase.paidAt ? purchase.paidAt.toLocaleDateString() : "Pending Stripe confirmation"}</p>
+              <p className="text-sm text-slate-600">
+                Job page:{" "}
+                <Link href={`/jobs/${purchase.jobSlug}`} className="underline underline-offset-4">
+                  /jobs/{purchase.jobSlug}
+                </Link>
+              </p>
+            </div>
+            <form
+              action={async () => {
+                "use server"
+
+                await requirePageRoles(["admin"], "/admin/jobs")
+                await markSocialShoutoutFulfilled(purchase.id)
+                redirect("/admin/jobs?shoutoutUpdated=1")
+              }}
+              className="mt-4"
+            >
+              <button type="submit" className="rounded bg-slate-900 px-4 py-2 text-sm text-white">
+                Mark fulfilled
+              </button>
+            </form>
+          </article>
+        ))}
+      </section>
+
       {jobs.length === 0 ? <p className="text-slate-600">No jobs found.</p> : null}
 
       <div className="space-y-3">
