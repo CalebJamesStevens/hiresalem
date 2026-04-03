@@ -32,15 +32,18 @@ export type ResourceArticle = {
   seoDescription: string
   heroTitle: string
   intro: string[]
+  markdownBody?: string
   sections: Array<{
     heading: string
-    paragraphs: string[]
+    paragraphs?: string[]
+    bullets?: string[]
+    resources?: LinkCard[]
   }>
   faqs: FaqItem[]
   relatedLinks: LinkCard[]
 }
 
-export const EDITORIAL_CONTENT_LAST_MODIFIED = new Date("2026-03-08T00:00:00.000Z")
+export const EDITORIAL_CONTENT_LAST_MODIFIED = new Date("2026-03-31T00:00:00.000Z")
 
 function buildSearchParams(input: Partial<JobsSearchParams> & Record<string, string>) {
   return parseJobsSearchParams(input)
@@ -1010,6 +1013,162 @@ export const resourceArticles: ResourceArticle[] = [
         href: "/jobs",
         title: "All jobs",
         description: "Open the full index when you want everything current."
+      }
+    ]
+  },
+  {
+    slug: "learn-a-trade-salem-oregon",
+    path: "/resources/learn-a-trade-salem-oregon",
+    seoTitle: "Learn a Trade in Salem, Oregon, Fast Paths to Training, Apprenticeship, and Jobs",
+    seoDescription:
+      "Learn a trade in Salem, Oregon. Compare apprenticeships and training programs, find financial aid, and follow a step-by-step plan to get hired.",
+    heroTitle: "How to start a trade career in Salem, Oregon (free + paid programs)",
+    intro: [
+      "If you live in Salem and want a stable, well-paying job, learning a trade is one of the most reliable paths.",
+      "This guide covers local schools, apprenticeships, and programs that can help you get trained and start working."
+    ],
+    markdownBody: `## Start Here if You Want a Job Quickly
+
+If your goal is to get hired as soon as possible, focus on apprenticeships first. Many of them pay you while you learn, and you do not need experience to apply.
+
+You can also start applying to entry-level roles while you train:
+
+[https://hiresalem.com/jobs](https://hiresalem.com/jobs/salem)
+
+## Trade Schools in Salem
+
+### Chemeketa Community College
+
+[https://www.chemeketa.edu](https://www.chemeketa.edu/)
+
+Chemeketa is one of the main places people in Salem go to learn hands-on skills.
+
+They offer programs in areas like welding, construction, automotive work, and heating and cooling systems. Most programs are designed to get you job ready, and many can be completed in a relatively short time compared to a traditional degree.
+
+### Willamette Workforce Partnership
+
+[https://willwp.org](https://willwp.org/)
+
+This is a good starting point if you are not sure what path to take yet.
+
+They help people figure out career options, connect to training programs, and sometimes help cover costs. If you need guidance or financial support, this is worth checking first.
+
+## Apprenticeships in Salem
+
+Apprenticeships are one of the best ways to enter a trade. You work, get paid, and learn at the same time.
+
+### Oregon Bureau of Labor and Industries
+
+[https://www.oregon.gov/boli/apprenticeship](https://www.oregon.gov/boli/apprenticeship)
+
+This is the official place to find registered apprenticeships in Oregon. You can browse openings and see what is available locally.
+
+### Electrical Apprenticeship (NECA-IBEW)
+
+[https://www.oregonjatc.org](https://www.oregonjatc.org/)
+
+This is one of the most common paths for becoming an electrician. It combines classroom learning with real job experience and leads to strong long term career options.
+
+### 290 Tech
+
+[https://www.290tech.edu](https://www.290tech.edu/)
+
+290 Tech trains people for plumbing, steamfitting, and HVAC careers.
+
+It is a well-known program in Oregon, and like most union apprenticeships, you earn while you learn. These trades are consistently in demand and can lead to high-paying work.
+
+### Northwest Line JATC
+
+[https://nwlinejatc.com](https://nwlinejatc.com/)
+
+This program focuses on training power line workers.
+
+It is more physical and outdoors than some other trades, but it pays well and is a solid long-term career. If you are interested in electrical infrastructure or utility work, this is a strong option.
+
+## Free and Low-Cost Programs
+
+If cost is a concern, there are programs that can help.
+
+### WorkSource Oregon
+
+[https://www.worksourceoregon.org](https://www.worksourceoregon.org/)
+
+WorkSource can help with job searches, resumes, and sometimes training costs. They are a good first stop if you want help getting started.
+
+### SNAP Training and Employment Program
+
+[https://www.oregon.gov/dhs/employment/pages/snap-training.aspx](https://www.oregon.gov/dhs/employment/pages/snap-training.aspx)
+
+If you qualify, this program can help pay for training and support things like transportation or childcare while you get established.
+
+### Mid-Willamette Valley Community Action Agency
+
+[https://mwvcaa.org](https://mwvcaa.org/)
+
+This organization offers a range of services that help people move into stable work.
+
+They provide job readiness support, career guidance, and programs like early learning apprenticeships. It is a good option if you want more structured help figuring out your next step.
+
+## Getting Your First Job
+
+Once you have some basic training or are enrolled in a program, you can start applying.
+
+Look for entry-level roles like helpers, apprentices, or laborers. Many employers are willing to train if you show up consistently and are willing to learn.
+
+You can browse local openings here:
+
+[https://hiresalem.com/jobs/salem](https://hiresalem.com/jobs/salem)
+
+## A Simple Path to Follow
+
+- Pick a trade that seems interesting and has good demand.
+- Choose a path, either a school or an apprenticeship.
+- Start applying to jobs early, even while you are training.
+- Stay consistent and build experience as you go.
+
+## Final Thoughts
+
+There are more options in Salem than most people realize. Whether you go through a school, an apprenticeship, or a workforce program, the key is to start.
+
+[https://hiresalem.com/jobs](https://hiresalem.com/jobs/salem)`,
+    sections: [],
+    faqs: [
+      {
+        question: "What is the fastest way to start a trade career in Salem?",
+        answer:
+          "Usually the fastest path is to apply to apprenticeships, check workforce funding, and apply to entry-level helper or laborer roles at the same time rather than waiting to finish training first."
+      },
+      {
+        question: "Do I need a four-year degree to get into the trades in Salem?",
+        answer:
+          "No. Many trade paths rely on apprenticeships, community-college certificates, or employer training instead of a traditional four-year degree."
+      },
+      {
+        question: "Where can I get help paying for trade training in Salem?",
+        answer:
+          "Start with WorkSource Oregon, Willamette Workforce Partnership, and programs like STEP if you qualify. They may help with grants, training support, transportation, or childcare."
+      },
+      {
+        question: "Should I wait until training is done before applying to jobs?",
+        answer:
+          "Usually no. Entry-level trade employers often hire apprentices, helpers, and laborers while candidates are still training."
+      }
+    ],
+    relatedLinks: [
+      {
+        href: "/jobs/salem/skilled-trades",
+        title: "Skilled trades jobs in Salem",
+        description: "Jump directly into the local trades-focused jobs page."
+      },
+      {
+        href: "/jobs/salem/construction",
+        title: "Construction jobs in Salem",
+        description: "Useful if you want field work, laborer roles, or a path into apprenticeships."
+      },
+      {
+        href: "/resources/salem-resume-tips",
+        title: "Salem resume tips",
+        description: "Tighten your resume before applying to helpers, apprentices, and maintenance roles."
       }
     ]
   }
