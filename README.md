@@ -102,6 +102,36 @@ Stripe subscription setup:
 - `bun run db:generate`
 - `bun run db:migrate`
 - `bun run db:seed`
+- `bun run db:studio`
+
+## Database Studio
+
+Use Drizzle Studio when you need to inspect or directly edit tables without writing SQL by hand.
+
+1. Make sure `DATABASE_URL` in the repo root `.env` points at the database you want to modify.
+2. Run `bun run db:studio` from the repo root.
+3. Open `http://localhost:4983` in your browser.
+
+This uses the existing Drizzle schema in [`packages/db/schema`](/Users/caleb/repos/hiresalem/packages/db/schema), so the tables and columns match the app models.
+
+## Coolify Database Admin
+
+For Coolify deployments, use the `pgadmin` sidecar service from [`docker/docker-compose.yml`](/Users/caleb/repos/hiresalem/docker/docker-compose.yml) instead of the app UI.
+
+Required Coolify env vars for that service:
+
+- `PGADMIN_DEFAULT_EMAIL`
+- `PGADMIN_DEFAULT_PASSWORD`
+
+Once deployed, open the `pgadmin` service in Coolify and connect to Postgres with:
+
+- host: `db`
+- port: `5432`
+- username: `postgres`
+- password: `postgres`
+- maintenance database: `hiresalem`
+
+If you change the database service credentials or point `DATABASE_URL` at an external Postgres instance, use those connection details instead.
 
 ## Docker / Coolify
 

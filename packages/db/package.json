@@ -6,7 +6,8 @@
   "scripts": {
     "generate": "drizzle-kit generate",
     "migrate": "drizzle-kit migrate",
-    "seed": "bun run seed.ts"
+    "seed": "bun run seed.ts",
+    "studio": "drizzle-kit studio"
   },
   "dependencies": {
     "dotenv": "^16.6.1",
