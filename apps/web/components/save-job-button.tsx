@@ -52,7 +52,7 @@ export function SaveJobButton({ jobId, initialSaved = false, className }: SaveJo
   }
 
   return (
-    <div className="space-y-2">
+    <div className="max-w-full space-y-2">
       <button
         type="button"
         onClick={onClick}
@@ -62,7 +62,7 @@ export function SaveJobButton({ jobId, initialSaved = false, className }: SaveJo
         {isPending ? "Saving..." : isSaved ? "Saved" : "Save job"}
       </button>
       {message ? (
-        <p className="text-xs text-slate-600">
+        <p className="break-words text-xs text-slate-600">
           {message}{" "}
           {requiresSignin ? (
             <Link href={`/signin?callbackUrl=${encodeURIComponent(callbackUrl)}`} className="font-medium underline">

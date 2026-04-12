@@ -76,9 +76,9 @@ export function JobsSearchForm({ params }: { params: JobsSearchParams }) {
   }, [isFiltersOpen])
 
   return (
-    <form action="/jobs" method="get" className="space-y-2 rounded-[1.75rem] border border-slate-200 bg-white p-3 shadow-sm">
-      <div className="grid gap-2 md:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)_auto]">
-        <div className="space-y-1">
+    <form action="/jobs" method="get" className="min-w-0 max-w-full space-y-2 rounded-[1.75rem] border border-slate-200 bg-white p-3 shadow-sm">
+      <div className="grid min-w-0 gap-2 md:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)_auto]">
+        <div className="min-w-0 space-y-1">
           <label htmlFor="q" className="sr-only">
             Keywords
           </label>
@@ -91,7 +91,7 @@ export function JobsSearchForm({ params }: { params: JobsSearchParams }) {
           />
         </div>
 
-        <div className="space-y-1">
+        <div className="min-w-0 space-y-1">
           <label htmlFor="location" className="sr-only">
             Location
           </label>
@@ -111,7 +111,7 @@ export function JobsSearchForm({ params }: { params: JobsSearchParams }) {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 overflow-visible pb-1">
+      <div className="flex min-w-0 flex-wrap items-center gap-2 overflow-visible pb-1">
         <div ref={filtersRef} className="relative shrink-0">
           <button
             type="button"
@@ -218,9 +218,9 @@ export function JobsSearchForm({ params }: { params: JobsSearchParams }) {
           ) : null}
         </div>
 
-        <label className="shrink-0">
+        <label className="min-w-0 shrink-0">
           <span className="sr-only">Sort</span>
-          <select name="sort" defaultValue={params.sort} className="min-h-10 rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800">
+          <select name="sort" defaultValue={params.sort} className="max-w-full min-h-10 rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800">
             {sortOptions
               .filter((option) => params.q || option.value !== "relevance")
               .map((option) => (

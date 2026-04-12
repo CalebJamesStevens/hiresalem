@@ -61,35 +61,35 @@ export function JobCard({ job, initialSaved = false }: { job: PublicJobSearchRes
 
   return (
     <article
-      className={`border p-5 shadow-sm ${
+      className={`min-w-0 max-w-full overflow-hidden border p-5 shadow-sm ${
         isFeatured ? "rounded-[2rem] border-indigo-200 bg-white shadow-[0_12px_32px_-28px_rgba(37,99,235,0.45)]" : "rounded-2xl border-slate-200 bg-white"
       }`}
     >
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div className="space-y-2">
+      <div className="flex min-w-0 flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div className="min-w-0 space-y-2">
           {isFeatured ? <FeaturedJobBadge /> : null}
-          <div className="space-y-1">
-            <h2 className="text-xl font-semibold text-slate-900">
-              <Link href={`/jobs/${job.slug}`} className="underline underline-offset-4">
+          <div className="min-w-0 space-y-1">
+            <h2 className="min-w-0 text-xl font-semibold text-slate-900">
+              <Link href={`/jobs/${job.slug}`} className="break-words underline underline-offset-4">
                 {job.title}
               </Link>
             </h2>
             {job.companySlug && job.companyName ? (
-              <Link href={buildCompanyJobsPath(job.companySlug)} className="text-sm font-medium text-slate-700 underline">
+              <Link href={buildCompanyJobsPath(job.companySlug)} className="break-words text-sm font-medium text-slate-700 underline">
                 {job.companyName}
               </Link>
             ) : job.companyName ? (
-              <p className="text-sm font-medium text-slate-700">{job.companyName}</p>
+              <p className="break-words text-sm font-medium text-slate-700">{job.companyName}</p>
             ) : null}
-            <p className="text-sm text-slate-600">{job.location ?? "Salem, OR"}</p>
+            <p className="break-words text-sm text-slate-600">{job.location ?? "Salem, OR"}</p>
           </div>
 
           {meta.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex min-w-0 flex-wrap gap-2">
               {meta.map((item) => (
                 <span
                   key={item}
-                  className={`rounded-full font-medium text-slate-700 ${
+                  className={`max-w-full break-words rounded-full font-medium text-slate-700 ${
                     isFeatured ? "border border-slate-200 bg-white px-3 py-1 text-xs" : "bg-slate-100 px-3 py-1 text-xs"
                   }`}
                 >
@@ -99,10 +99,10 @@ export function JobCard({ job, initialSaved = false }: { job: PublicJobSearchRes
             </div>
           ) : null}
 
-          <p className="line-clamp-3 text-sm text-slate-700">{description}</p>
+          <p className="line-clamp-3 break-words text-sm text-slate-700">{description}</p>
         </div>
 
-        <div className="flex shrink-0 flex-col items-start gap-3 md:items-end">
+        <div className="flex w-full flex-col items-start gap-3 md:w-auto md:shrink-0 md:items-end">
           <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">{formatRelativeDate(postedAt)}</p>
           <SaveJobButton jobId={job.id} initialSaved={initialSaved} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700" />
           <Link href={`/jobs/${job.slug}`} className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white">

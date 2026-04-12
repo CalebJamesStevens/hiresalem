@@ -356,20 +356,20 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
           </div>
         ) : null}
 
-        <div className="grid gap-4">
+        <div className="grid min-w-0 gap-4">
           {companyJobs.map((job) => (
             <article
               key={job.id}
-              className={`rounded-[2rem] border p-5 shadow-sm ${
+              className={`min-w-0 max-w-full overflow-hidden rounded-[2rem] border p-5 shadow-sm ${
                 job.isFeatured ? "border-indigo-200 bg-white shadow-[0_12px_32px_-28px_rgba(37,99,235,0.45)]" : "border-slate-200 bg-white"
               }`}
             >
-              <div className="space-y-2">
+              <div className="min-w-0 space-y-2">
                 {job.isFeatured ? <FeaturedJobBadge /> : null}
-                <Link href={`/jobs/${job.slug}`} className="text-xl font-semibold text-slate-900 underline underline-offset-4">
+                <Link href={`/jobs/${job.slug}`} className="block break-words text-xl font-semibold text-slate-900 underline underline-offset-4">
                   {job.title}
                 </Link>
-                <p className="text-sm text-slate-600">{job.location ?? "Salem, OR"}</p>
+                <p className="break-words text-sm text-slate-600">{job.location ?? "Salem, OR"}</p>
               </div>
             </article>
           ))}
