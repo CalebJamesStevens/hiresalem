@@ -8,6 +8,7 @@ type SignUpPageProps = {
 }
 
 export const dynamic = "force-dynamic"
+const SIGNUP_HONEYPOT_FIELD = "signupFaxNumber"
 
 function errorMessage(error: string | undefined) {
   if (!error) {
@@ -24,6 +25,10 @@ function errorMessage(error: string | undefined) {
 
   if (error === "email_exists") {
     return "An account with that email already exists."
+  }
+
+  if (error === "try_again_later") {
+    return "Too many signup attempts detected. Please wait a bit and try again."
   }
 
   if (error === "admin_config_missing") {
@@ -73,6 +78,11 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
 
       <form method="post" action="/api/account/signup" className="space-y-4">
         <input type="hidden" name="callbackUrl" value={callbackUrl} />
+
+        <div className="hidden" aria-hidden="true">
+          <label htmlFor={SIGNUP_HONEYPOT_FIELD}>Fax number</label>
+          <input id={SIGNUP_HONEYPOT_FIELD} name={SIGNUP_HONEYPOT_FIELD} tabIndex={-1} autoComplete="off" />
+        </div>
 
         <div className="space-y-1">
           <label htmlFor="name" className="text-sm font-medium">
