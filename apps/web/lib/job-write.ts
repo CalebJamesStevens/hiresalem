@@ -164,9 +164,9 @@ export function getJobPublicationValidationMessage(reasons: JobPublicationValida
   const messageMap: Record<JobPublicationValidationReason, string> = {
     missing_company: "Select or create a company before publishing this job.",
     missing_description: "Add a job description before publishing this job.",
-    missing_job_location_city: "Add a schema job-location city before publishing this non-remote job.",
-    missing_job_location_region: "Add a schema job-location region before publishing this non-remote job.",
-    missing_job_location_country: "Add a schema job-location country before publishing this non-remote job."
+    missing_job_location_city: "Add the job city before publishing this non-remote job.",
+    missing_job_location_region: "Add the job state or region before publishing this non-remote job.",
+    missing_job_location_country: "Add the job country code before publishing this non-remote job."
   }
 
   return reasons.map((reason) => messageMap[reason]).join(" ")

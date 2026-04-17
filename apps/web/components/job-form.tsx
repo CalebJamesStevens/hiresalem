@@ -348,21 +348,29 @@ export function JobForm({
 
         <div className="space-y-1">
           <label htmlFor="location" className="text-sm font-medium">
-            Location
+            Location shown on listing
           </label>
-          <input id="location" name="location" defaultValue={initialValues?.location ?? ""} disabled={disabled} className="w-full rounded border px-3 py-2" />
-          <p className="text-xs text-slate-500">Use city and state at minimum, like "Salem, OR".</p>
+          <input
+            id="location"
+            name="location"
+            placeholder="Salem, OR"
+            defaultValue={initialValues?.location ?? ""}
+            disabled={disabled}
+            className="w-full rounded border px-3 py-2"
+          />
+          <p className="text-xs text-slate-500">This is the short location text job seekers see on the listing and job page.</p>
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">
           <div className="space-y-1">
             <label htmlFor="jobLocationCity" className="text-sm font-medium">
-              Schema city
+              City
             </label>
             <input
               id="jobLocationCity"
               name="jobLocationCity"
               required={workMode !== "remote"}
+              placeholder="Salem"
               defaultValue={initialValues?.jobLocationCity ?? ""}
               disabled={disabled}
               className="w-full rounded border px-3 py-2"
@@ -371,31 +379,34 @@ export function JobForm({
 
           <div className="space-y-1">
             <label htmlFor="jobLocationRegion" className="text-sm font-medium">
-              Schema region
+              State or region
             </label>
             <input
               id="jobLocationRegion"
               name="jobLocationRegion"
               required={workMode !== "remote"}
+              placeholder="OR"
               defaultValue={initialValues?.jobLocationRegion ?? "OR"}
               disabled={disabled}
               className="w-full rounded border px-3 py-2"
             />
+            <p className="text-xs text-slate-500">Use the state abbreviation when applicable, like "OR".</p>
           </div>
 
           <div className="space-y-1">
             <label htmlFor="jobLocationCountry" className="text-sm font-medium">
-              Schema country
+              Country code
             </label>
             <input
               id="jobLocationCountry"
               name="jobLocationCountry"
               required={workMode !== "remote"}
+              placeholder="US"
               defaultValue={initialValues?.jobLocationCountry ?? "US"}
               disabled={disabled}
               className="w-full rounded border px-3 py-2"
             />
-            <p className="text-xs text-slate-500">Used for Google Job Posting markup. Required for non-remote jobs.</p>
+            <p className="text-xs text-slate-500">Use the 2-letter country code, like "US". Required for non-remote jobs.</p>
           </div>
         </div>
 
