@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { usePathname } from "next/navigation"
 import { useEffect, useState } from "react"
 
 import { SiteBrand } from "@/components/site-brand"
@@ -29,6 +30,7 @@ type SessionShape = {
 }
 
 export function Navbar() {
+  const pathname = usePathname()
   const [session, setSession] = useState<SessionShape | null>(null)
 
   useEffect(() => {
@@ -57,7 +59,7 @@ export function Navbar() {
     return () => {
       isCancelled = true
     }
-  }, [])
+  }, [pathname])
 
   const userId = session?.user?.id
   const roles = normalizeRoles(session?.user?.roles)
