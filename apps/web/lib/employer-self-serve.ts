@@ -10,10 +10,10 @@ export function getEmployerStartHref(planId: CompanyPlanId) {
 
 export function getEmployerPlanSelectionHref(planId: CompanyPlanId) {
   if (planId === "free") {
-    return "/dashboard/company?welcome=1"
+    return "/dashboard/company?welcome=1&_fb_event=CompleteRegistration"
   }
 
-  return `/dashboard/plan?selectedPlan=${planId}&onboarding=1#pricing`
+  return `/dashboard/plan?selectedPlan=${planId}&onboarding=1&_fb_event=CompleteRegistration#pricing`
 }
 
 export function getEmployerExistingAccountHref(planId: CompanyPlanId) {

@@ -2,9 +2,10 @@ import { eq } from "drizzle-orm"
 import { redirect } from "next/navigation"
 
 import { unstable_update } from "@/auth"
+import { CompanyLogoField } from "@/components/company-logo-field"
+import { deleteStoredCompanyImage, isStoredCompanyImageKey, uploadCompanyImageFile, validateCompanyImageFile } from "@/lib/company-image-storage"
 import {
   COMPANY_LOCATION_MAX_LENGTH,
-  COMPANY_LOGO_URL_MAX_LENGTH,
   COMPANY_NAME_MAX_LENGTH,
   COMPANY_SHORT_DESCRIPTION_MAX_LENGTH,
   COMPANY_WEBSITE_MAX_LENGTH,
@@ -43,7 +44,19 @@ function errorMessage(error: string | undefined) {
   }
 
   if (error === "invalid_logo_url") {
-    return "Logo URL must be a valid URL."
+    return "Logo must be a valid image."
+  }
+
+  if (error === "invalid_logo_file_type") {
+    return "Logo must be a PNG, JPG, JPEG, or WebP image."
+  }
+
+  if (error === "logo_file_too_large") {
+    return "Logo must be 2 MB or smaller."
+  }
+
+  if (error === "logo_upload_failed") {
+    return "Logo upload failed. Please try again."
   }
 
   if (error === "short_description_length") {
@@ -153,9 +166,27 @@ export default async function BecomeBusinessPage({ searchParams }: BecomeBusines
             redirect(`/signin?callbackUrl=${encodeURIComponent(`/become-business?plan=${selectedPlan}`)}`)
           }
 
+          const logoEntry = formData.get("logo")
+          const logoFile = logoEntry instanceof File ? logoEntry : null
+          const logoValidation = validateCompanyImageFile(logoFile)
+
+          if (!logoValidation.ok) {
+            redirect(`/become-business?plan=${selectedPlan}&error=${logoValidation.errorCode}`)
+          }
+
+          let uploadedLogoUrl: string | null = null
+
+          try {
+            if (logoValidation.file) {
+              uploadedLogoUrl = await uploadCompanyImageFile(logoValidation.file)
+            }
+          } catch {
+            redirect(`/become-business?plan=${selectedPlan}&error=logo_upload_failed`)
+          }
+
           const parsed = parseCompanyProfileInput({
             name: String(formData.get("name") ?? ""),
-            logoUrl: String(formData.get("logoUrl") ?? ""),
+            logoUrl: uploadedLogoUrl ?? "",
             shortDescription: String(formData.get("shortDescription") ?? ""),
             website: String(formData.get("website") ?? ""),
             location: String(formData.get("location") ?? "")
@@ -169,6 +200,9 @@ export default async function BecomeBusinessPage({ searchParams }: BecomeBusines
           const redirectPath = getBusinessOnboardingRedirectPath(roles, Boolean(existingCompany))
 
           if (redirectPath) {
+            if (uploadedLogoUrl && isStoredCompanyImageKey(uploadedLogoUrl)) {
+              await deleteStoredCompanyImage(uploadedLogoUrl).catch(() => undefined)
+            }
             redirect(getEmployerExistingAccountHref(selectedPlan))
           }
 
@@ -195,6 +229,9 @@ export default async function BecomeBusinessPage({ searchParams }: BecomeBusines
 
               companyId = createdCompany?.id ?? null
             } catch {
+              if (uploadedLogoUrl && isStoredCompanyImageKey(uploadedLogoUrl)) {
+                await deleteStoredCompanyImage(uploadedLogoUrl).catch(() => undefined)
+              }
               redirect(`/become-business?plan=${selectedPlan}&error=already_business`)
             }
           }
@@ -212,6 +249,9 @@ export default async function BecomeBusinessPage({ searchParams }: BecomeBusines
             if (!roleResult.ok) {
               if (shouldDeleteCreatedCompany) {
                 await db.delete(companies).where(eq(companies.id, companyId))
+              }
+              if (uploadedLogoUrl && isStoredCompanyImageKey(uploadedLogoUrl)) {
+                await deleteStoredCompanyImage(uploadedLogoUrl).catch(() => undefined)
               }
               redirect(`/become-business?plan=${selectedPlan}&error=${roleResult.reason}`)
             }
@@ -235,20 +275,7 @@ export default async function BecomeBusinessPage({ searchParams }: BecomeBusines
           <input id="name" name="name" required maxLength={COMPANY_NAME_MAX_LENGTH} className="w-full rounded border px-3 py-2" />
         </div>
 
-        <div className="space-y-1">
-          <label htmlFor="logoUrl" className="text-sm font-medium">
-            Logo URL
-          </label>
-          <input
-            id="logoUrl"
-            name="logoUrl"
-            type="url"
-            maxLength={COMPANY_LOGO_URL_MAX_LENGTH}
-            placeholder="https://example.com/logo.png"
-            className="w-full rounded border px-3 py-2"
-          />
-          <p className="text-xs text-slate-500">Use a hosted image URL for now. Upload support is out of scope for the Community plan.</p>
-        </div>
+        <CompanyLogoField />
 
         <div className="space-y-1">
           <label htmlFor="shortDescription" className="text-sm font-medium">

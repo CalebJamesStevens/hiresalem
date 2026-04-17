@@ -1,16 +1,23 @@
 import Link from "next/link"
 import { redirect } from "next/navigation"
 
+import { CompanyLogoField } from "@/components/company-logo-field"
 import { EmployerPlanSummaryCard } from "@/components/employer-plan-summary-card"
 import { LockedPlanFeatureCard } from "@/components/locked-plan-feature-card"
 import { hasRole } from "@/lib/authz"
+import {
+  deleteStoredCompanyImage,
+  getCompanyImageSrc,
+  isStoredCompanyImageKey,
+  uploadCompanyImageFile,
+  validateCompanyImageFile
+} from "@/lib/company-image-storage"
 import { companyProfileLockedFeatureIds, getLockedCompanyFeatures } from "@/lib/company-plan-ui"
 import {
   canManageCompanyProfile,
   companySocialLinkFields,
   COMPANY_ENHANCED_TEXT_MAX_LENGTH,
   COMPANY_LOCATION_MAX_LENGTH,
-  COMPANY_LOGO_URL_MAX_LENGTH,
   COMPANY_MEDIA_URL_MAX_LENGTH,
   COMPANY_NAME_MAX_LENGTH,
   COMPANY_SHORT_DESCRIPTION_MAX_LENGTH,
@@ -48,7 +55,19 @@ function getErrorMessage(error?: string) {
   }
 
   if (error === "invalid_logo_url") {
-    return "Logo URL must be a valid URL."
+    return "Logo must be a valid image."
+  }
+
+  if (error === "invalid_logo_file_type") {
+    return "Logo must be a PNG, JPG, JPEG, or WebP image."
+  }
+
+  if (error === "logo_file_too_large") {
+    return "Logo must be 2 MB or smaller."
+  }
+
+  if (error === "logo_upload_failed") {
+    return "Logo upload failed. Please try again."
   }
 
   if (error === "short_description_length") {
@@ -191,10 +210,31 @@ export default async function DashboardCompanyPage({ searchParams }: DashboardCo
               }
 
               const companyPlan = resolveCompanyPlan(company)
+              const logoEntry = formData.get("logo")
+              const logoFile = logoEntry instanceof File ? logoEntry : null
+              const logoValidation = validateCompanyImageFile(logoFile)
+
+              if (!logoValidation.ok) {
+                redirect(`/dashboard/company?companyId=${company.id}&error=${logoValidation.errorCode}`)
+              }
+
+              const removeLogo = formData.get("removeLogo") === "on"
+              const previousLogoUrl = company.logoUrl
+              let uploadedLogoUrl: string | null = null
+
+              try {
+                if (logoValidation.file) {
+                  uploadedLogoUrl = await uploadCompanyImageFile(logoValidation.file)
+                }
+              } catch {
+                redirect(`/dashboard/company?companyId=${company.id}&error=logo_upload_failed`)
+              }
+
+              const nextLogoUrl = uploadedLogoUrl ?? (removeLogo ? null : previousLogoUrl)
               const parsed = parseCompanyProfileInputForPlan(
                 {
                   name: String(formData.get("name") ?? ""),
-                  logoUrl: String(formData.get("logoUrl") ?? ""),
+                  logoUrl: nextLogoUrl ?? "",
                   shortDescription: String(formData.get("shortDescription") ?? ""),
                   website: String(formData.get("website") ?? ""),
                   location: String(formData.get("location") ?? ""),
@@ -212,14 +252,29 @@ export default async function DashboardCompanyPage({ searchParams }: DashboardCo
               )
 
               if (!parsed.success) {
+                if (uploadedLogoUrl && isStoredCompanyImageKey(uploadedLogoUrl)) {
+                  await deleteStoredCompanyImage(uploadedLogoUrl).catch(() => undefined)
+                }
                 const error = "errorCode" in parsed ? parsed.errorCode : getCompanyProfileValidationErrorCode(parsed.error)
                 redirect(`/dashboard/company?companyId=${company.id}&error=${error}`)
               }
 
-              await updateCompanyProfile({
-                id: company.id,
-                ...parsed.data
-              })
+              try {
+                await updateCompanyProfile({
+                  id: company.id,
+                  ...parsed.data
+                })
+              } catch (error) {
+                if (uploadedLogoUrl && isStoredCompanyImageKey(uploadedLogoUrl)) {
+                  await deleteStoredCompanyImage(uploadedLogoUrl).catch(() => undefined)
+                }
+
+                throw error
+              }
+
+              if (previousLogoUrl && previousLogoUrl !== parsed.data.logoUrl && isStoredCompanyImageKey(previousLogoUrl)) {
+                await deleteStoredCompanyImage(previousLogoUrl).catch(() => undefined)
+              }
 
               redirect(`/dashboard/company?companyId=${company.id}&updated=1`)
             }}
@@ -247,21 +302,11 @@ export default async function DashboardCompanyPage({ searchParams }: DashboardCo
                 />
               </div>
 
-              <div className="space-y-1">
-                <label htmlFor="logoUrl" className="text-sm font-medium">
-                  Logo URL
-                </label>
-                <input
-                  id="logoUrl"
-                  name="logoUrl"
-                  type="url"
-                  maxLength={COMPANY_LOGO_URL_MAX_LENGTH}
-                  defaultValue={editableCompany.logoUrl ?? ""}
-                  placeholder="https://example.com/logo.png"
-                  className="w-full rounded border px-3 py-2"
-                />
-                <p className="text-xs text-slate-500">Use a hosted image URL for the logo.</p>
-              </div>
+              <CompanyLogoField
+                currentImageSrc={getCompanyImageSrc(editableCompany.logoUrl)}
+                currentImageAlt={`${editableCompany.name} logo`}
+                removeFieldName="removeLogo"
+              />
 
               <div className="space-y-1">
                 <label htmlFor="shortDescription" className="text-sm font-medium">

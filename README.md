@@ -32,6 +32,7 @@ Copy `.env.example` to `.env` and set real values:
 - `AUTH_KEYCLOAK_ADMIN_SECRET` (optional, recommended for signup/admin actions)
 - `AUTH_KEYCLOAK_DEFAULT_ROLE` (defaults to `user`)
 - `NEXT_PUBLIC_APP_URL` (recommended for Stripe redirects)
+- `NEXT_PUBLIC_META_PIXEL_ID` (optional, enables Meta Pixel and business-registration `CompleteRegistration` tracking)
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`
 - `STRIPE_STANDARD_PLAN_PRICE_ID`
@@ -42,6 +43,8 @@ Copy `.env.example` to `.env` and set real values:
 - `EMPLOYER_NOTIFICATIONS_EMAIL` (optional, used for social shoutout queue emails)
 - `GOOGLE_INDEXING_API_SERVICE_ACCOUNT_JSON` or both `GOOGLE_INDEXING_API_CLIENT_EMAIL` + `GOOGLE_INDEXING_API_PRIVATE_KEY` (optional, recommended for job URL indexing)
 - `CRON_SECRET` (required if you want cron endpoints protected)
+- `RESUME_S3_ENDPOINT`, `RESUME_S3_REGION`, `RESUME_S3_BUCKET`, `RESUME_S3_ACCESS_KEY_ID`, `RESUME_S3_SECRET_ACCESS_KEY` (required for resume uploads and business logo uploads)
+- `RESUME_S3_FORCE_PATH_STYLE` (optional, defaults to `true`; keep it enabled for Garage/MinIO-style setups unless you know you need virtual-hosted style)
 
 Keycloak requirements for signup:
 
@@ -72,7 +75,8 @@ Business plans foundation:
 - the effective plan and entitlements live in [`packages/db/plans.ts`](/Users/caleb/repos/hiresalem/packages/db/plans.ts)
 - existing companies default safely to `free`
 - the `free` plan is the Community tier: up to 2 active jobs, 30-day expiry, standard visibility, and basic profile fields only
-- Free-plan onboarding lives at `/become-business` and captures the basic public company profile fields: name, logo URL, short description, website, and city/area
+- Free-plan onboarding lives at `/become-business` and captures the basic public company profile fields: name, logo, short description, website, and city/area
+- business logo uploads now use the same S3-compatible storage path as resumes and are served back through the app at `/api/company-images/*`
 - the employer-facing profile editor lives at `/dashboard/company`, and the public company page continues to render at `/jobs/company/[slug]`
 - Community-plan employers can save drafts, publish up to 2 live jobs at once, close/reopen eligible jobs from `/dashboard/jobs`, and use the fixed 30-day listing window
 - Standard and Partner unlock social links, expanded about content, why work here, benefits/perks, and hosted cover/gallery image URLs on company pages

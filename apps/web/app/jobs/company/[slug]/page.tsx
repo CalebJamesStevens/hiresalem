@@ -6,6 +6,7 @@ import { EmployerAnalyticsTracker } from "@/components/employer-analytics-tracke
 import { FeaturedJobBadge } from "@/components/featured-job-badge"
 import { JsonLd } from "@/components/json-ld"
 import { MarkdownContent } from "@/components/markdown-content"
+import { getCompanyImageSrc } from "@/lib/company-image-storage"
 import {
   buildCompanyProfilePageDescription,
   getCompanyBySlug,
@@ -214,7 +215,7 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
           <div className="flex flex-col gap-6 md:flex-row md:items-start">
             {company.logoUrl ? (
               <img
-                src={company.logoUrl}
+                src={getCompanyImageSrc(company.logoUrl) ?? company.logoUrl}
                 alt={`${company.name} logo`}
                 className={`h-20 w-20 rounded-2xl object-cover ${publicProfile.usesEnhancedPresentation ? "border border-white bg-white shadow-lg" : "border border-slate-200"}`}
               />

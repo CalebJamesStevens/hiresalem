@@ -1,3 +1,4 @@
+import { getAbsoluteCompanyImageUrl } from "@/lib/company-image-storage"
 import { siteConfig, absoluteUrl } from "@/lib/seo"
 
 type BreadcrumbItem = {
@@ -151,8 +152,8 @@ export function buildCompanyOrganizationJsonLd(input: {
     name: input.name,
     url: absoluteUrl(input.path),
     description: input.description ?? undefined,
-    logo: input.logoUrl ?? undefined,
-    image: input.imageUrl ?? input.logoUrl ?? undefined,
+    logo: getAbsoluteCompanyImageUrl(input.logoUrl) ?? undefined,
+    image: getAbsoluteCompanyImageUrl(input.imageUrl) ?? getAbsoluteCompanyImageUrl(input.logoUrl) ?? undefined,
     sameAs: sameAs.length > 0 ? sameAs : undefined
   }
 }

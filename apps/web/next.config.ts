@@ -7,7 +7,10 @@ const dirname = path.dirname(filename)
 
 const nextConfig: NextConfig = {
   experimental: {
-    externalDir: true
+    externalDir: true,
+    serverActions: {
+      bodySizeLimit: "4mb"
+    }
   },
   turbopack: {
     root: path.join(dirname, "../..")

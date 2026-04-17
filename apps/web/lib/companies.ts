@@ -1,6 +1,7 @@
 import { asc, eq } from "drizzle-orm"
 import { z } from "zod"
 
+import { isValidCompanyLogoValue } from "@/lib/company-image-storage"
 import { db } from "@/lib/db"
 import { snippet } from "@/lib/seo"
 import { companyPlanIds, resolveCompanyPlan, type CompanyPlanId, type ResolvedCompanyPlan } from "@repo/db/plans"
@@ -60,9 +61,19 @@ const optionalProfileUrlField = (max: number, message: string) =>
     return trimmed ? trimmed : undefined
   }, z.string().max(max, message).url(message).optional())
 
+const optionalCompanyLogoField = (max: number, message: string) =>
+  z.preprocess((value) => {
+    if (typeof value !== "string") {
+      return value
+    }
+
+    const trimmed = value.trim()
+    return trimmed ? trimmed : undefined
+  }, z.string().max(max, message).refine((value) => isValidCompanyLogoValue(value), message).optional())
+
 const companyProfileInputSchema = z.object({
   name: z.string().trim().min(2, "company_name_length").max(COMPANY_NAME_MAX_LENGTH, "company_name_length"),
-  logoUrl: optionalProfileUrlField(COMPANY_LOGO_URL_MAX_LENGTH, "invalid_logo_url"),
+  logoUrl: optionalCompanyLogoField(COMPANY_LOGO_URL_MAX_LENGTH, "invalid_logo_url"),
   shortDescription: optionalProfileTextField(COMPANY_SHORT_DESCRIPTION_MAX_LENGTH, "short_description_length"),
   website: optionalProfileUrlField(COMPANY_WEBSITE_MAX_LENGTH, "invalid_website"),
   location: optionalProfileTextField(COMPANY_LOCATION_MAX_LENGTH, "company_location_length"),

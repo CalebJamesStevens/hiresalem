@@ -11,7 +11,11 @@ describe("employer self-serve helpers", () => {
 
   test("builds entry and continuation paths for paid plans", () => {
     expect(getEmployerStartHref("standard")).toBe("/employers/start?plan=standard")
-    expect(getEmployerPlanSelectionHref("standard")).toBe("/dashboard/plan?selectedPlan=standard&onboarding=1#pricing")
+    expect(getEmployerPlanSelectionHref("standard")).toBe("/dashboard/plan?selectedPlan=standard&onboarding=1&_fb_event=CompleteRegistration#pricing")
     expect(getEmployerExistingAccountHref("partner")).toBe("/dashboard/plan?selectedPlan=partner#pricing")
+  })
+
+  test("includes a one-time Meta pixel completion event on successful business onboarding", () => {
+    expect(getEmployerPlanSelectionHref("free")).toBe("/dashboard/company?welcome=1&_fb_event=CompleteRegistration")
   })
 })

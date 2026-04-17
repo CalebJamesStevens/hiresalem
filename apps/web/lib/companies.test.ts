@@ -63,6 +63,24 @@ describe("parseCompanyProfileInput", () => {
     })
   })
 
+  test("accepts uploaded logo storage keys", () => {
+    const parsed = parseCompanyProfileInput({
+      name: "Acme Health",
+      logoUrl: "company-images/123e4567-e89b-12d3-a456-426614174000.png",
+      shortDescription: "",
+      website: "",
+      location: ""
+    })
+
+    expect(parsed.success).toBe(true)
+
+    if (!parsed.success) {
+      return
+    }
+
+    expect(parsed.data.logoUrl).toBe("company-images/123e4567-e89b-12d3-a456-426614174000.png")
+  })
+
   test("rejects invalid logo urls", () => {
     const parsed = parseCompanyProfileInput({
       name: "Acme Health",

@@ -3,22 +3,31 @@
 import { useEffect } from "react"
 import { usePathname, useSearchParams } from "next/navigation"
 
-import { trackAnalyticsEvent } from "@/lib/analytics"
+import { trackAnalyticsEvent, trackMetaPixelEvent } from "@/lib/analytics"
 
 export function AnalyticsListener() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
   useEffect(() => {
-    const trackedEvent = searchParams.get("_gc_event")
-    if (!trackedEvent) {
+    const trackedGoatCounterEvent = searchParams.get("_gc_event")
+    const trackedMetaPixelEvent = searchParams.get("_fb_event")
+
+    if (!trackedGoatCounterEvent && !trackedMetaPixelEvent) {
       return
     }
 
-    trackAnalyticsEvent(trackedEvent)
+    if (trackedGoatCounterEvent) {
+      trackAnalyticsEvent(trackedGoatCounterEvent)
+    }
+
+    if (trackedMetaPixelEvent) {
+      trackMetaPixelEvent(trackedMetaPixelEvent)
+    }
 
     const nextUrl = new URL(window.location.href)
     nextUrl.searchParams.delete("_gc_event")
+    nextUrl.searchParams.delete("_fb_event")
     window.history.replaceState({}, "", `${pathname}${nextUrl.search}${nextUrl.hash}`)
   }, [pathname, searchParams])
 

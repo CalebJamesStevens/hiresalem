@@ -7,7 +7,7 @@ import { AnalyticsListener } from "@/components/analytics-listener"
 import { JsonLd } from "@/components/json-ld"
 import { Navbar } from "@/components/navbar"
 import { SiteBrand } from "@/components/site-brand"
-import { getGoatCounterEndpoint, getGoatCounterScriptSrc } from "@/lib/analytics"
+import { getGoatCounterEndpoint, getGoatCounterScriptSrc, getMetaPixelBootstrapCode } from "@/lib/analytics"
 import { siteConfig } from "@/lib/seo"
 import { SUPPORT_EMAIL, SUPPORT_EMAIL_HREF } from "@/lib/support"
 import { buildOrganizationJsonLd, buildWebsiteJsonLd } from "@/lib/structured-data"
@@ -59,6 +59,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const goatCounterSite = process.env.NEXT_PUBLIC_GOATCOUNTER_SITE
+  const metaPixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim()
 
   return (
     <html lang="en">
@@ -98,6 +99,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             src={getGoatCounterScriptSrc(goatCounterSite)}
             data-goatcounter={getGoatCounterEndpoint(goatCounterSite)}
             strategy="afterInteractive"
+          />
+        ) : null}
+        {metaPixelId ? (
+          <Script
+            id="meta-pixel"
+            strategy="afterInteractive"
+            dangerouslySetInnerHTML={{
+              __html: getMetaPixelBootstrapCode(metaPixelId)
+            }}
           />
         ) : null}
       </body>

@@ -65,7 +65,7 @@ export function getPublicOrigin(origin?: string | null) {
   return normalizePublicOrigin(origin)
 }
 
-export function absoluteUrl(path = "/", origin = siteConfig.url) {
+export function absoluteUrl(path = "/", origin: string = siteConfig.url) {
   return new URL(path, normalizePublicOrigin(origin)).toString()
 }
 
